@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QFrame, QSizePolicy
+    QLabel, QPushButton, QFrame, QSizePolicy, QStackedWidget
 )
 from PyQt6.QtCore import Qt
+from app.models.cliente import contar_clientes
 
 
 class JanelaPrincipal(QMainWindow):
@@ -14,6 +15,7 @@ class JanelaPrincipal(QMainWindow):
         self.setMinimumSize(1100, 680)
         self.setStyleSheet(self._estilos())
         self._construir_interface()
+        self._atualizar_cards()
 
     def _construir_interface(self):
         widget_central = QWidget()
@@ -25,24 +27,37 @@ class JanelaPrincipal(QMainWindow):
         sidebar = self._criar_sidebar()
         layout_raiz.addWidget(sidebar)
 
-        self.area_conteudo = QWidget()
-        self.area_conteudo.setObjectName("area_conteudo")
-        layout_conteudo = QVBoxLayout(self.area_conteudo)
-        layout_conteudo.setContentsMargins(32, 32, 32, 32)
-        layout_conteudo.setSpacing(24)
+        # Area de conteudo com pilha de telas
+        area = QWidget()
+        area.setObjectName("area_conteudo")
+        self.layout_conteudo = QVBoxLayout(area)
+        self.layout_conteudo.setContentsMargins(32, 32, 32, 32)
+        self.layout_conteudo.setSpacing(24)
 
         header = self._criar_header()
-        layout_conteudo.addWidget(header)
+        self.layout_conteudo.addWidget(header)
 
-        cards = self._criar_cards_resumo()
-        layout_conteudo.addWidget(cards)
+        # Stack de paginas
+        self.stack = QStackedWidget()
 
-        placeholder = QLabel("Selecione uma opcao no menu lateral para comecar.")
-        placeholder.setObjectName("placeholder")
-        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout_conteudo.addWidget(placeholder, stretch=1)
+        # Pagina 0: Dashboard
+        self.pagina_dashboard = self._criar_pagina_dashboard()
+        self.stack.addWidget(self.pagina_dashboard)
 
-        layout_raiz.addWidget(self.area_conteudo, stretch=1)
+        # Pagina 1: Clientes
+        from app.views.tela_clientes import TelaClientes
+        self.pagina_clientes = TelaClientes()
+        self.stack.addWidget(self.pagina_clientes)
+
+        # Paginas futuras (placeholder)
+        for _ in range(3):
+            ph = QLabel("Em desenvolvimento...")
+            ph.setObjectName("placeholder")
+            ph.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.stack.addWidget(ph)
+
+        self.layout_conteudo.addWidget(self.stack)
+        layout_raiz.addWidget(area, stretch=1)
 
     def _criar_sidebar(self):
         sidebar = QFrame()
@@ -67,11 +82,12 @@ class JanelaPrincipal(QMainWindow):
         ]
 
         self.botoes_menu = []
-        for texto in itens:
+        for i, texto in enumerate(itens):
             btn = QPushButton(texto)
             btn.setObjectName("btn_menu")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setCheckable(True)
+            btn.clicked.connect(lambda _, idx=i: self._navegar(idx))
             layout.addWidget(btn)
             self.botoes_menu.append(btn)
 
@@ -89,21 +105,37 @@ class JanelaPrincipal(QMainWindow):
 
     def _criar_header(self):
         frame = QFrame()
-        layout = QHBoxLayout(frame)
-        layout.setContentsMargins(0, 0, 0, 0)
+        self.layout_header = QHBoxLayout(frame)
+        self.layout_header.setContentsMargins(0, 0, 0, 0)
 
-        label_titulo = QLabel("Dashboard")
-        label_titulo.setObjectName("titulo_pagina")
-        layout.addWidget(label_titulo)
+        self.label_titulo_pagina = QLabel("Dashboard")
+        self.label_titulo_pagina.setObjectName("titulo_pagina")
+        self.layout_header.addWidget(self.label_titulo_pagina)
 
-        layout.addStretch()
+        self.layout_header.addStretch()
 
         nome = self.usuario['nome'].split()[0]
         label_usuario = QLabel(f"Ola, {nome}")
         label_usuario.setObjectName("label_usuario")
-        layout.addWidget(label_usuario)
+        self.layout_header.addWidget(label_usuario)
 
         return frame
+
+    def _criar_pagina_dashboard(self):
+        pagina = QWidget()
+        layout = QVBoxLayout(pagina)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(20)
+
+        cards = self._criar_cards_resumo()
+        layout.addWidget(cards)
+
+        placeholder = QLabel("Selecione uma opcao no menu lateral para comecar.")
+        placeholder.setObjectName("placeholder")
+        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(placeholder, stretch=1)
+
+        return pagina
 
     def _criar_cards_resumo(self):
         frame = QFrame()
@@ -111,15 +143,12 @@ class JanelaPrincipal(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(16)
 
-        dados_cards = [
-            ("Ordens Abertas",   "0", "#7c6af7"),
-            ("Em Andamento",     "0", "#f59e0b"),
-            ("Concluidas",       "0", "#10b981"),
-            ("Clientes",         "0", "#3b82f6"),
-        ]
+        self.card_abertas  = self._criar_card("Ordens Abertas", "0", "#7c6af7")
+        self.card_andamento = self._criar_card("Em Andamento",  "0", "#f59e0b")
+        self.card_concluidas = self._criar_card("Concluidas",   "0", "#10b981")
+        self.card_clientes  = self._criar_card("Clientes",      "0", "#3b82f6")
 
-        for titulo, valor, cor in dados_cards:
-            card = self._criar_card(titulo, valor, cor)
+        for card in [self.card_abertas, self.card_andamento, self.card_concluidas, self.card_clientes]:
             layout.addWidget(card)
 
         return frame
@@ -133,6 +162,7 @@ class JanelaPrincipal(QMainWindow):
         layout.setSpacing(8)
 
         label_valor = QLabel(valor)
+        label_valor.setProperty("cor", cor)
         label_valor.setObjectName("card_valor")
         label_valor.setStyleSheet(f"color: {cor}; font-size: 32px; font-weight: bold;")
         layout.addWidget(label_valor)
@@ -141,7 +171,28 @@ class JanelaPrincipal(QMainWindow):
         label_titulo.setObjectName("card_titulo")
         layout.addWidget(label_titulo)
 
+        # Guarda referencia ao label de valor para atualizar depois
+        card._label_valor = label_valor
         return card
+
+    def _atualizar_cards(self):
+        total_clientes = contar_clientes()
+        self.card_clientes._label_valor.setText(str(total_clientes))
+
+    def _navegar(self, indice: int):
+        titulos = ["Dashboard", "Ordens de Servico", "Clientes", "Usuarios", "Relatorios"]
+
+        for i, btn in enumerate(self.botoes_menu):
+            btn.setChecked(i == indice)
+
+        self.label_titulo_pagina.setText(titulos[indice])
+        self.stack.setCurrentIndex(indice)
+
+        # Atualiza dados ao navegar
+        if indice == 0:
+            self._atualizar_cards()
+        elif indice == 2:
+            self.pagina_clientes._carregar_clientes()
 
     def _sair(self):
         from app.views.tela_login import TelaLogin
