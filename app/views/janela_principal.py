@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from app.models.cliente import contar_clientes
+from app.models.ordem_servico import contar_por_status
 
 
 class JanelaPrincipal(QMainWindow):
@@ -27,7 +28,6 @@ class JanelaPrincipal(QMainWindow):
         sidebar = self._criar_sidebar()
         layout_raiz.addWidget(sidebar)
 
-        # Area de conteudo com pilha de telas
         area = QWidget()
         area.setObjectName("area_conteudo")
         self.layout_conteudo = QVBoxLayout(area)
@@ -37,21 +37,25 @@ class JanelaPrincipal(QMainWindow):
         header = self._criar_header()
         self.layout_conteudo.addWidget(header)
 
-        # Stack de paginas
         self.stack = QStackedWidget()
 
         # Pagina 0: Dashboard
         self.pagina_dashboard = self._criar_pagina_dashboard()
         self.stack.addWidget(self.pagina_dashboard)
 
-        # Pagina 1: Clientes
+        # Pagina 1: Ordens de Servico
+        from app.views.tela_ordens import TelaOrdens
+        self.pagina_ordens = TelaOrdens()
+        self.stack.addWidget(self.pagina_ordens)
+
+        # Pagina 2: Clientes
         from app.views.tela_clientes import TelaClientes
         self.pagina_clientes = TelaClientes()
         self.stack.addWidget(self.pagina_clientes)
 
         # Paginas futuras (placeholder)
-        for _ in range(3):
-            ph = QLabel("Em desenvolvimento...")
+        for texto in ["Usuarios - Em desenvolvimento...", "Relatorios - Em desenvolvimento..."]:
+            ph = QLabel(texto)
             ph.setObjectName("placeholder")
             ph.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.stack.addWidget(ph)
@@ -105,19 +109,19 @@ class JanelaPrincipal(QMainWindow):
 
     def _criar_header(self):
         frame = QFrame()
-        self.layout_header = QHBoxLayout(frame)
-        self.layout_header.setContentsMargins(0, 0, 0, 0)
+        layout_header = QHBoxLayout(frame)
+        layout_header.setContentsMargins(0, 0, 0, 0)
 
         self.label_titulo_pagina = QLabel("Dashboard")
         self.label_titulo_pagina.setObjectName("titulo_pagina")
-        self.layout_header.addWidget(self.label_titulo_pagina)
+        layout_header.addWidget(self.label_titulo_pagina)
 
-        self.layout_header.addStretch()
+        layout_header.addStretch()
 
         nome = self.usuario['nome'].split()[0]
         label_usuario = QLabel(f"Ola, {nome}")
         label_usuario.setObjectName("label_usuario")
-        self.layout_header.addWidget(label_usuario)
+        layout_header.addWidget(label_usuario)
 
         return frame
 
@@ -130,7 +134,7 @@ class JanelaPrincipal(QMainWindow):
         cards = self._criar_cards_resumo()
         layout.addWidget(cards)
 
-        placeholder = QLabel("Selecione uma opcao no menu lateral para comecar.")
+        placeholder = QLabel("Bem-vindo ao Orbitask! Selecione uma opcao no menu lateral.")
         placeholder.setObjectName("placeholder")
         placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(placeholder, stretch=1)
@@ -143,10 +147,10 @@ class JanelaPrincipal(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(16)
 
-        self.card_abertas  = self._criar_card("Ordens Abertas", "0", "#7c6af7")
-        self.card_andamento = self._criar_card("Em Andamento",  "0", "#f59e0b")
-        self.card_concluidas = self._criar_card("Concluidas",   "0", "#10b981")
-        self.card_clientes  = self._criar_card("Clientes",      "0", "#3b82f6")
+        self.card_abertas    = self._criar_card("Ordens Abertas", "0", "#7c6af7")
+        self.card_andamento  = self._criar_card("Em Andamento",   "0", "#f59e0b")
+        self.card_concluidas = self._criar_card("Concluidas",     "0", "#10b981")
+        self.card_clientes   = self._criar_card("Clientes",       "0", "#3b82f6")
 
         for card in [self.card_abertas, self.card_andamento, self.card_concluidas, self.card_clientes]:
             layout.addWidget(card)
@@ -162,7 +166,6 @@ class JanelaPrincipal(QMainWindow):
         layout.setSpacing(8)
 
         label_valor = QLabel(valor)
-        label_valor.setProperty("cor", cor)
         label_valor.setObjectName("card_valor")
         label_valor.setStyleSheet(f"color: {cor}; font-size: 32px; font-weight: bold;")
         layout.addWidget(label_valor)
@@ -171,13 +174,15 @@ class JanelaPrincipal(QMainWindow):
         label_titulo.setObjectName("card_titulo")
         layout.addWidget(label_titulo)
 
-        # Guarda referencia ao label de valor para atualizar depois
         card._label_valor = label_valor
         return card
 
     def _atualizar_cards(self):
-        total_clientes = contar_clientes()
-        self.card_clientes._label_valor.setText(str(total_clientes))
+        contagens = contar_por_status()
+        self.card_abertas._label_valor.setText(str(contagens.get("aberta", 0)))
+        self.card_andamento._label_valor.setText(str(contagens.get("em_andamento", 0)))
+        self.card_concluidas._label_valor.setText(str(contagens.get("concluida", 0)))
+        self.card_clientes._label_valor.setText(str(contar_clientes()))
 
     def _navegar(self, indice: int):
         titulos = ["Dashboard", "Ordens de Servico", "Clientes", "Usuarios", "Relatorios"]
@@ -188,9 +193,10 @@ class JanelaPrincipal(QMainWindow):
         self.label_titulo_pagina.setText(titulos[indice])
         self.stack.setCurrentIndex(indice)
 
-        # Atualiza dados ao navegar
         if indice == 0:
             self._atualizar_cards()
+        elif indice == 1:
+            self.pagina_ordens._aplicar_filtros()
         elif indice == 2:
             self.pagina_clientes._carregar_clientes()
 
@@ -254,9 +260,7 @@ class JanelaPrincipal(QMainWindow):
                 background-color: #2d1f1f;
                 color: #f87171;
             }
-            QWidget#area_conteudo {
-                background-color: #0f1117;
-            }
+            QWidget#area_conteudo { background-color: #0f1117; }
             QLabel#titulo_pagina {
                 font-size: 22px;
                 font-weight: bold;
