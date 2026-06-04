@@ -4,7 +4,6 @@ import bcrypt
 
 
 def criar_tabelas():
-    """Cria todas as tabelas necessarias no banco de dados."""
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -41,6 +40,9 @@ def criar_tabelas():
             prioridade TEXT NOT NULL DEFAULT 'normal',
             cliente_id INTEGER,
             tecnico_id INTEGER,
+            valor_servico REAL DEFAULT 0.0,
+            valor_pecas REAL DEFAULT 0.0,
+            status_pagamento TEXT DEFAULT 'pendente',
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (cliente_id) REFERENCES clientes(id),
@@ -62,6 +64,20 @@ def criar_tabelas():
             FOREIGN KEY (ordem_id) REFERENCES ordens_servico(id)
         )
     """)
+
+    # Adiciona colunas financeiras caso o banco ja exista (migracao segura)
+    try:
+        cursor.execute("ALTER TABLE ordens_servico ADD COLUMN valor_servico REAL DEFAULT 0.0")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE ordens_servico ADD COLUMN valor_pecas REAL DEFAULT 0.0")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE ordens_servico ADD COLUMN status_pagamento TEXT DEFAULT 'pendente'")
+    except Exception:
+        pass
 
     conn.commit()
     conn.close()

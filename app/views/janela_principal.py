@@ -7,6 +7,11 @@ from PyQt6.QtCore import Qt
 from app.models.cliente import contar_clientes
 from app.models.ordem_servico import contar_por_status
 from app.models.equipamento import contar_equipamentos
+from app.models.financeiro import resumo_financeiro
+
+
+def formatar_brl(valor: float) -> str:
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 class JanelaPrincipal(QMainWindow):
@@ -14,7 +19,7 @@ class JanelaPrincipal(QMainWindow):
         super().__init__()
         self.usuario = usuario
         self.setWindowTitle("Orbitask")
-        self.setMinimumSize(1100, 680)
+        self.setMinimumSize(1200, 700)
         self.setStyleSheet(self._estilos())
         self._construir_interface()
         self._atualizar_cards()
@@ -59,12 +64,17 @@ class JanelaPrincipal(QMainWindow):
         self.pagina_equipamentos = TelaEquipamentos()
         self.stack.addWidget(self.pagina_equipamentos)
 
-        # Pagina 4: Usuarios
+        # Pagina 4: Financeiro
+        from app.views.tela_financeiro import TelaFinanceiro
+        self.pagina_financeiro = TelaFinanceiro()
+        self.stack.addWidget(self.pagina_financeiro)
+
+        # Pagina 5: Usuarios
         from app.views.tela_usuarios import TelaUsuarios
         self.pagina_usuarios = TelaUsuarios(usuario_logado=self.usuario)
         self.stack.addWidget(self.pagina_usuarios)
 
-        # Pagina 5: Relatorios
+        # Pagina 6: Relatorios
         from app.views.tela_relatorios import TelaRelatorios
         self.pagina_relatorios = TelaRelatorios()
         self.stack.addWidget(self.pagina_relatorios)
@@ -91,6 +101,7 @@ class JanelaPrincipal(QMainWindow):
             "Ordens de Servico",
             "Clientes",
             "Equipamentos",
+            "Financeiro",
             "Usuarios",
             "Relatorios",
         ]
@@ -158,8 +169,36 @@ class JanelaPrincipal(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(20)
 
-        cards = self._criar_cards_resumo()
-        layout.addWidget(cards)
+        # Linha 1: cards de OS
+        linha1 = QHBoxLayout()
+        linha1.setSpacing(16)
+        self.card_abertas    = self._criar_card("Ordens Abertas", "0",      "#7c6af7")
+        self.card_andamento  = self._criar_card("Em Andamento",   "0",      "#f59e0b")
+        self.card_concluidas = self._criar_card("Concluidas",     "0",      "#10b981")
+        self.card_clientes   = self._criar_card("Clientes",       "0",      "#3b82f6")
+        self.card_equipamentos = self._criar_card("Equipamentos", "0",      "#ec4899")
+        for c in [self.card_abertas, self.card_andamento, self.card_concluidas,
+                  self.card_clientes, self.card_equipamentos]:
+            linha1.addWidget(c)
+
+        frame1 = QFrame()
+        frame1.setLayout(linha1)
+        layout.addWidget(frame1)
+
+        # Linha 2: cards financeiros
+        linha2 = QHBoxLayout()
+        linha2.setSpacing(16)
+        self.card_receita_total    = self._criar_card("Receita Total",    "R$ 0,00", "#7c6af7", grande=True)
+        self.card_receita_recebida = self._criar_card("Receita Recebida", "R$ 0,00", "#10b981", grande=True)
+        self.card_a_receber        = self._criar_card("A Receber",        "R$ 0,00", "#f59e0b", grande=True)
+        self.card_os_pagas         = self._criar_card("OS Pagas",         "0",       "#3b82f6", grande=True)
+        for c in [self.card_receita_total, self.card_receita_recebida,
+                  self.card_a_receber, self.card_os_pagas]:
+            linha2.addWidget(c)
+
+        frame2 = QFrame()
+        frame2.setLayout(linha2)
+        layout.addWidget(frame2)
 
         placeholder = QLabel("Bem-vindo ao Orbitask! Selecione uma opcao no menu lateral.")
         placeholder.setObjectName("placeholder")
@@ -168,42 +207,25 @@ class JanelaPrincipal(QMainWindow):
 
         return pagina
 
-    def _criar_cards_resumo(self):
-        frame = QFrame()
-        layout = QHBoxLayout(frame)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(16)
-
-        self.card_abertas      = self._criar_card("Ordens Abertas",  "0", "#7c6af7")
-        self.card_andamento    = self._criar_card("Em Andamento",    "0", "#f59e0b")
-        self.card_concluidas   = self._criar_card("Concluidas",      "0", "#10b981")
-        self.card_clientes     = self._criar_card("Clientes",        "0", "#3b82f6")
-        self.card_equipamentos = self._criar_card("Equipamentos",    "0", "#ec4899")
-
-        for card in [self.card_abertas, self.card_andamento, self.card_concluidas,
-                     self.card_clientes, self.card_equipamentos]:
-            layout.addWidget(card)
-
-        return frame
-
-    def _criar_card(self, titulo, valor, cor):
+    def _criar_card(self, titulo, valor, cor, grande=False):
         card = QFrame()
         card.setObjectName("card_resumo")
         card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(8)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(6)
 
-        label_valor = QLabel(valor)
-        label_valor.setObjectName("card_valor")
-        label_valor.setStyleSheet(f"color: {cor}; font-size: 28px; font-weight: bold;")
-        layout.addWidget(label_valor)
+        tamanho = "20px" if grande else "26px"
+        lv = QLabel(valor)
+        lv.setObjectName("card_valor")
+        lv.setStyleSheet(f"color: {cor}; font-size: {tamanho}; font-weight: bold;")
+        layout.addWidget(lv)
 
-        label_titulo = QLabel(titulo)
-        label_titulo.setObjectName("card_titulo")
-        layout.addWidget(label_titulo)
+        lt = QLabel(titulo)
+        lt.setObjectName("card_titulo")
+        layout.addWidget(lt)
 
-        card._label_valor = label_valor
+        card._label_valor = lv
         return card
 
     def _atualizar_cards(self):
@@ -214,9 +236,15 @@ class JanelaPrincipal(QMainWindow):
         self.card_clientes._label_valor.setText(str(contar_clientes()))
         self.card_equipamentos._label_valor.setText(str(contar_equipamentos()))
 
+        res = resumo_financeiro()
+        self.card_receita_total._label_valor.setText(formatar_brl(res.get("receita_total", 0)))
+        self.card_receita_recebida._label_valor.setText(formatar_brl(res.get("receita_recebida", 0)))
+        self.card_a_receber._label_valor.setText(formatar_brl(res.get("receita_pendente", 0)))
+        self.card_os_pagas._label_valor.setText(str(res.get("os_pagas", 0)))
+
     def _navegar(self, indice: int):
         titulos = ["Dashboard", "Ordens de Servico", "Clientes",
-                   "Equipamentos", "Usuarios", "Relatorios"]
+                   "Equipamentos", "Financeiro", "Usuarios", "Relatorios"]
 
         for i, btn in enumerate(self.botoes_menu):
             btn.setChecked(i == indice)
@@ -233,6 +261,8 @@ class JanelaPrincipal(QMainWindow):
         elif indice == 3:
             self.pagina_equipamentos._carregar_equipamentos()
         elif indice == 4:
+            self.pagina_financeiro._aplicar_filtros()
+        elif indice == 5:
             self.pagina_usuarios._carregar_usuarios()
 
     def _sair(self):
@@ -323,7 +353,7 @@ class JanelaPrincipal(QMainWindow):
                 background-color: #1a1d27;
                 border-radius: 12px;
                 border: 1px solid #2e3347;
-                min-height: 110px;
+                min-height: 90px;
             }
             QLabel#card_titulo {
                 font-size: 12px;
