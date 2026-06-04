@@ -4,32 +4,27 @@ from PyQt6.QtWidgets import (
     QPushButton, QFrame, QTableWidget, QTableWidgetItem,
     QHeaderView, QLineEdit, QMessageBox, QAbstractItemView, QComboBox
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt, QDate
 from app.models.ordem_servico import listar_ordens, deletar_ordem
 from app.views.dialogo_ordem import DialogoOrdem
 
-
-# Mapeamento de status para exibicao e cor
 STATUS_CONFIG = {
-    "aberta":       ("Aberta",       "#7c6af7", "#2d2b55"),
-    "em_andamento": ("Em Andamento", "#f59e0b", "#332b1a"),
-    "concluida":    ("Concluida",    "#10b981", "#1a2e28"),
-    "cancelada":    ("Cancelada",    "#f87171", "#2d1f1f"),
+    "aberta":       ("Aberta",       "#4a9eff", "#001a3a"),
+    "em_andamento": ("Em Andamento", "#f0a030", "#2a1a00"),
+    "concluida":    ("Concluida",    "#2ab87a", "#001a10"),
+    "cancelada":    ("Cancelada",    "#e05555", "#2a0808"),
 }
-
 PRIORIDADE_CONFIG = {
-    "baixa":   ("Baixa",   "#6b7280"),
-    "normal":  ("Normal",  "#3b82f6"),
-    "alta":    ("Alta",    "#f59e0b"),
-    "urgente": ("Urgente", "#f87171"),
+    "baixa":   ("Baixa",   "#3a6a9a"),
+    "normal":  ("Normal",  "#4a9eff"),
+    "alta":    ("Alta",    "#f0a030"),
+    "urgente": ("Urgente", "#e05555"),
 }
 
 
 class TelaOrdens(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet(self._estilos())
         self._construir_interface()
         self._carregar_ordens()
 
@@ -38,57 +33,54 @@ class TelaOrdens(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(20)
 
-        # Header
-        header = QFrame()
-        layout_header = QHBoxLayout(header)
-        layout_header.setContentsMargins(0, 0, 0, 0)
-        layout_header.setSpacing(12)
+        header = QWidget()
+        lh = QHBoxLayout(header)
+        lh.setContentsMargins(0, 0, 0, 0)
+        lh.setSpacing(12)
 
-        label_titulo = QLabel("Ordens de Servico")
-        label_titulo.setObjectName("titulo_secao")
-        layout_header.addWidget(label_titulo)
+        col = QVBoxLayout()
+        col.setSpacing(2)
+        titulo = QLabel("Ordens de Servico")
+        titulo.setObjectName("titulo_secao")
+        col.addWidget(titulo)
+        self.label_contador = QLabel("Carregando...")
+        self.label_contador.setObjectName("label_contador")
+        col.addWidget(self.label_contador)
+        lh.addLayout(col)
 
-        layout_header.addStretch()
+        lh.addStretch()
 
-        # Busca
         self.campo_busca = QLineEdit()
-        self.campo_busca.setPlaceholderText("Buscar ordem...")
-        self.campo_busca.setObjectName("campo_busca")
-        self.campo_busca.setFixedWidth(200)
+        self.campo_busca.setPlaceholderText("Buscar por titulo, cliente ou tecnico...")
+        self.campo_busca.setFixedWidth(240)
+        self.campo_busca.setFixedHeight(38)
         self.campo_busca.textChanged.connect(self._aplicar_filtros)
-        layout_header.addWidget(self.campo_busca)
+        lh.addWidget(self.campo_busca)
 
-        # Filtro de status
         self.combo_filtro = QComboBox()
-        self.combo_filtro.setObjectName("combo_filtro")
+        self.combo_filtro.setFixedHeight(38)
+        self.combo_filtro.setFixedWidth(160)
         self.combo_filtro.addItem("Todos os status", userData=None)
-        self.combo_filtro.addItem("Aberta",       userData="aberta")
-        self.combo_filtro.addItem("Em Andamento", userData="em_andamento")
-        self.combo_filtro.addItem("Concluida",    userData="concluida")
-        self.combo_filtro.addItem("Cancelada",    userData="cancelada")
+        self.combo_filtro.addItem("Aberta",          userData="aberta")
+        self.combo_filtro.addItem("Em Andamento",    userData="em_andamento")
+        self.combo_filtro.addItem("Concluida",       userData="concluida")
+        self.combo_filtro.addItem("Cancelada",       userData="cancelada")
         self.combo_filtro.currentIndexChanged.connect(self._aplicar_filtros)
-        layout_header.addWidget(self.combo_filtro)
+        lh.addWidget(self.combo_filtro)
 
-        # Botao nova OS
         btn_novo = QPushButton("+ Nova Ordem")
         btn_novo.setObjectName("btn_primario")
         btn_novo.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_novo.clicked.connect(self._abrir_dialogo_novo)
-        layout_header.addWidget(btn_novo)
+        btn_novo.setFixedHeight(38)
+        btn_novo.clicked.connect(self._novo)
+        lh.addWidget(btn_novo)
 
         layout.addWidget(header)
 
-        # Contador
-        self.label_contador = QLabel("0 ordens encontradas")
-        self.label_contador.setObjectName("label_contador")
-        layout.addWidget(self.label_contador)
-
-        # Tabela
         self.tabela = QTableWidget()
-        self.tabela.setObjectName("tabela")
-        self.tabela.setColumnCount(7)
+        self.tabela.setColumnCount(8)
         self.tabela.setHorizontalHeaderLabels([
-            "ID", "Titulo", "Cliente", "Tecnico", "Prioridade", "Status", "Acoes"
+            "#", "TITULO", "CLIENTE", "TECNICO", "PRAZO", "PRIORIDADE", "STATUS", "ACOES"
         ])
         self.tabela.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.tabela.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -97,217 +89,125 @@ class TelaOrdens(QWidget):
         self.tabela.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.tabela.setAlternatingRowColors(True)
         self.tabela.setShowGrid(False)
-        self.tabela.setColumnWidth(0, 50)   # ID
-        self.tabela.setColumnWidth(3, 140)  # Tecnico
-        self.tabela.setColumnWidth(4, 90)   # Prioridade
-        self.tabela.setColumnWidth(5, 120)  # Status
-        self.tabela.setColumnWidth(6, 170)  # Acoes
-
+        self.tabela.setColumnWidth(0, 50)
+        self.tabela.setColumnWidth(3, 130)
+        self.tabela.setColumnWidth(4, 100)
+        self.tabela.setColumnWidth(5, 90)
+        self.tabela.setColumnWidth(6, 120)
+        self.tabela.setColumnWidth(7, 160)
         layout.addWidget(self.tabela)
 
-    def _carregar_ordens(self, busca: str = "", filtro_status: str = None):
+    def _carregar_ordens(self, busca="", filtro_status=None):
         self.ordens = listar_ordens(filtro_status=filtro_status)
-
         if busca:
-            busca_lower = busca.lower()
-            self.ordens = [
-                o for o in self.ordens
-                if busca_lower in o["titulo"].lower()
-                or busca_lower in (o["cliente_nome"] or "").lower()
-                or busca_lower in (o["tecnico_nome"] or "").lower()
-            ]
+            b = busca.lower()
+            self.ordens = [o for o in self.ordens if
+                b in o["titulo"].lower() or
+                b in (o.get("cliente_nome") or "").lower() or
+                b in (o.get("tecnico_nome") or "").lower()]
 
         self.tabela.setRowCount(0)
+        hoje = QDate.currentDate()
 
-        for ordem in self.ordens:
-            linha = self.tabela.rowCount()
-            self.tabela.insertRow(linha)
-            self.tabela.setRowHeight(linha, 52)
+        for o in self.ordens:
+            row = self.tabela.rowCount()
+            self.tabela.insertRow(row)
+            self.tabela.setRowHeight(row, 50)
 
-            self.tabela.setItem(linha, 0, self._celula(str(ordem["id"]), centralizar=True))
-            self.tabela.setItem(linha, 1, self._celula(ordem["titulo"]))
-            self.tabela.setItem(linha, 2, self._celula(ordem["cliente_nome"] or "-"))
-            self.tabela.setItem(linha, 3, self._celula(ordem["tecnico_nome"] or "-"))
+            self.tabela.setItem(row, 0, self._cel(str(o["id"]), center=True))
+            self.tabela.setItem(row, 1, self._cel(o["titulo"]))
+            self.tabela.setItem(row, 2, self._cel(o.get("cliente_nome") or "—"))
+            self.tabela.setItem(row, 3, self._cel(o.get("tecnico_nome") or "—"))
 
-            # Badge de prioridade
-            self.tabela.setCellWidget(linha, 4, self._badge_prioridade(ordem["prioridade"]))
+            # Prazo com cor se vencido
+            prazo = o.get("prazo")
+            if prazo:
+                try:
+                    p = prazo.split("-")
+                    data_q = QDate(int(p[0]), int(p[1]), int(p[2]))
+                    texto_prazo = f"{p[2]}/{p[1]}/{p[0]}"
+                    item_prazo = QTableWidgetItem(texto_prazo)
+                    item_prazo.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    from PyQt6.QtGui import QColor
+                    if data_q < hoje and o["status"] not in ("concluida", "cancelada"):
+                        item_prazo.setForeground(QColor("#e05555"))
+                    else:
+                        item_prazo.setForeground(QColor("#2a5a8a"))
+                    self.tabela.setItem(row, 4, item_prazo)
+                except Exception:
+                    self.tabela.setItem(row, 4, self._cel("—", center=True))
+            else:
+                self.tabela.setItem(row, 4, self._cel("—", center=True))
 
-            # Badge de status
-            self.tabela.setCellWidget(linha, 5, self._badge_status(ordem["status"]))
-
-            # Acoes
-            widget_acoes = QWidget()
-            layout_acoes = QHBoxLayout(widget_acoes)
-            layout_acoes.setContentsMargins(8, 6, 8, 6)
-            layout_acoes.setSpacing(8)
-
-            btn_editar = QPushButton("Editar")
-            btn_editar.setObjectName("btn_editar")
-            btn_editar.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn_editar.clicked.connect(lambda _, o=ordem: self._abrir_dialogo_edicao(o))
-            layout_acoes.addWidget(btn_editar)
-
-            btn_excluir = QPushButton("Excluir")
-            btn_excluir.setObjectName("btn_excluir")
-            btn_excluir.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn_excluir.clicked.connect(lambda _, o=ordem: self._confirmar_exclusao(o))
-            layout_acoes.addWidget(btn_excluir)
-
-            self.tabela.setCellWidget(linha, 6, widget_acoes)
+            self.tabela.setCellWidget(row, 5, self._badge_prioridade(o["prioridade"]))
+            self.tabela.setCellWidget(row, 6, self._badge_status(o["status"]))
+            self.tabela.setCellWidget(row, 7, self._acoes(o))
 
         total = len(self.ordens)
         self.label_contador.setText(f"{total} ordem{'s' if total != 1 else ''} encontrada{'s' if total != 1 else ''}")
 
-    def _celula(self, texto: str, centralizar: bool = False):
+    def _cel(self, texto, center=False):
         item = QTableWidgetItem(texto)
-        if centralizar:
+        if center:
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         return item
 
-    def _badge_status(self, status: str):
-        texto, cor_texto, cor_fundo = STATUS_CONFIG.get(status, ("Desconhecido", "#fff", "#333"))
-        widget = QWidget()
-        layout = QHBoxLayout(widget)
-        layout.setContentsMargins(8, 4, 8, 4)
-        label = QLabel(texto)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet(f"""
-            background-color: {cor_fundo};
-            color: {cor_texto};
-            border: 1px solid {cor_texto};
-            border-radius: 10px;
-            padding: 2px 10px;
-            font-size: 11px;
-            font-weight: bold;
-        """)
-        layout.addWidget(label)
-        return widget
+    def _badge_status(self, status):
+        texto, cor, fundo = STATUS_CONFIG.get(status, ("?", "#fff", "#111"))
+        w = QWidget()
+        l = QHBoxLayout(w)
+        l.setContentsMargins(6, 4, 6, 4)
+        lbl = QLabel(texto)
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl.setStyleSheet(f"background-color:{fundo}; color:{cor}; border:1px solid {cor}; border-radius:10px; padding:2px 10px; font-size:11px; font-weight:700;")
+        l.addWidget(lbl)
+        return w
 
-    def _badge_prioridade(self, prioridade: str):
-        texto, cor = PRIORIDADE_CONFIG.get(prioridade, ("Normal", "#3b82f6"))
-        widget = QWidget()
-        layout = QHBoxLayout(widget)
-        layout.setContentsMargins(8, 4, 8, 4)
-        label = QLabel(texto)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet(f"""
-            color: {cor};
-            font-size: 12px;
-            font-weight: bold;
-        """)
-        layout.addWidget(label)
-        return widget
+    def _badge_prioridade(self, prioridade):
+        texto, cor = PRIORIDADE_CONFIG.get(prioridade, ("Normal", "#4a9eff"))
+        w = QWidget()
+        l = QHBoxLayout(w)
+        l.setContentsMargins(6, 4, 6, 4)
+        lbl = QLabel(texto)
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl.setStyleSheet(f"color:{cor}; font-size:12px; font-weight:600;")
+        l.addWidget(lbl)
+        return w
+
+    def _acoes(self, ordem):
+        w = QWidget()
+        l = QHBoxLayout(w)
+        l.setContentsMargins(8, 6, 8, 6)
+        l.setSpacing(8)
+        btn_e = QPushButton("Editar")
+        btn_e.setObjectName("btn_editar")
+        btn_e.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_e.clicked.connect(lambda _, o=ordem: self._editar(o))
+        l.addWidget(btn_e)
+        btn_x = QPushButton("Excluir")
+        btn_x.setObjectName("btn_excluir")
+        btn_x.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_x.clicked.connect(lambda _, o=ordem: self._excluir(o))
+        l.addWidget(btn_x)
+        l.addStretch()
+        return w
 
     def _aplicar_filtros(self):
-        busca = self.campo_busca.text()
-        filtro_status = self.combo_filtro.currentData()
-        self._carregar_ordens(busca=busca, filtro_status=filtro_status)
+        self._carregar_ordens(busca=self.campo_busca.text(), filtro_status=self.combo_filtro.currentData())
 
-    def _abrir_dialogo_novo(self):
-        dialogo = DialogoOrdem(parent=self)
-        if dialogo.exec():
+    def _novo(self):
+        if DialogoOrdem(parent=self).exec():
             self._aplicar_filtros()
 
-    def _abrir_dialogo_edicao(self, ordem: dict):
-        dialogo = DialogoOrdem(parent=self, ordem=ordem)
-        if dialogo.exec():
+    def _editar(self, ordem):
+        if DialogoOrdem(parent=self, ordem=ordem).exec():
             self._aplicar_filtros()
 
-    def _confirmar_exclusao(self, ordem: dict):
-        resposta = QMessageBox.question(
-            self,
-            "Confirmar exclusao",
-            f"Deseja excluir a ordem '{ordem['titulo']}'?\n\nEssa acao nao pode ser desfeita.",
+    def _excluir(self, ordem):
+        r = QMessageBox.question(self, "Confirmar exclusao",
+            f"Excluir a ordem '{ordem['titulo']}'?\n\nEssa acao nao pode ser desfeita.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-        if resposta == QMessageBox.StandardButton.Yes:
+            QMessageBox.StandardButton.No)
+        if r == QMessageBox.StandardButton.Yes:
             deletar_ordem(ordem["id"])
             self._aplicar_filtros()
-
-    def _estilos(self):
-        return """
-            QLabel#titulo_secao {
-                font-size: 20px;
-                font-weight: bold;
-                color: #f0f0f0;
-            }
-            QLabel#label_contador {
-                font-size: 12px;
-                color: #6b7280;
-            }
-            QLineEdit#campo_busca {
-                background-color: #1a1d27;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-                color: #e0e0e0;
-            }
-            QLineEdit#campo_busca:focus {
-                border: 1px solid #7c6af7;
-            }
-            QComboBox#combo_filtro {
-                background-color: #1a1d27;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-                color: #e0e0e0;
-                min-width: 150px;
-            }
-            QComboBox#combo_filtro::drop-down { border: none; }
-            QComboBox#combo_filtro QAbstractItemView {
-                background-color: #252836;
-                color: #e0e0e0;
-                selection-background-color: #7c6af7;
-            }
-            QPushButton#btn_primario {
-                background-color: #7c6af7;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 9px 16px;
-                font-size: 13px;
-                font-weight: bold;
-            }
-            QPushButton#btn_primario:hover { background-color: #6a58e0; }
-            QTableWidget#tabela {
-                background-color: #1a1d27;
-                border: 1px solid #2e3347;
-                border-radius: 10px;
-                gridline-color: transparent;
-                font-size: 13px;
-                color: #e0e0e0;
-                alternate-background-color: #1f2233;
-                selection-background-color: #2d2b55;
-            }
-            QTableWidget#tabela::item { padding: 8px; border: none; }
-            QHeaderView::section {
-                background-color: #252836;
-                color: #9ca3af;
-                font-size: 12px;
-                font-weight: bold;
-                padding: 10px 8px;
-                border: none;
-                border-bottom: 1px solid #2e3347;
-            }
-            QPushButton#btn_editar {
-                background-color: #2d2b55;
-                color: #7c6af7;
-                border: 1px solid #7c6af7;
-                border-radius: 6px;
-                padding: 4px 12px;
-                font-size: 12px;
-            }
-            QPushButton#btn_editar:hover { background-color: #7c6af7; color: white; }
-            QPushButton#btn_excluir {
-                background-color: #2d1f1f;
-                color: #f87171;
-                border: 1px solid #f87171;
-                border-radius: 6px;
-                padding: 4px 12px;
-                font-size: 12px;
-            }
-            QPushButton#btn_excluir:hover { background-color: #f87171; color: white; }
-        """

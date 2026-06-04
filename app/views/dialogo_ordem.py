@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QComboBox, QTextEdit, QMessageBox
+    QLineEdit, QPushButton, QComboBox, QTextEdit, QMessageBox, QDateEdit
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QDate
 from app.models.ordem_servico import criar_ordem, atualizar_ordem
 from app.models.cliente import listar_clientes
 from app.database.connection import get_connection
@@ -18,35 +18,19 @@ def listar_tecnicos():
     return tecnicos
 
 
-STATUS_OPCOES = [
-    ("aberta",       "Aberta"),
-    ("em_andamento", "Em Andamento"),
-    ("concluida",    "Concluida"),
-    ("cancelada",    "Cancelada"),
-]
-
-PRIORIDADE_OPCOES = [
-    ("baixa",   "Baixa"),
-    ("normal",  "Normal"),
-    ("alta",    "Alta"),
-    ("urgente", "Urgente"),
-]
+STATUS_OPCOES   = [("aberta","Aberta"),("em_andamento","Em Andamento"),("concluida","Concluida"),("cancelada","Cancelada")]
+PRIORIDADE_OPCOES = [("baixa","Baixa"),("normal","Normal"),("alta","Alta"),("urgente","Urgente")]
 
 
 class DialogoOrdem(QDialog):
-    """Dialogo para criar ou editar uma Ordem de Servico."""
-
     def __init__(self, parent=None, ordem: dict = None):
         super().__init__(parent)
         self.ordem = ordem
         self.editando = ordem is not None
-
-        titulo = "Editar Ordem de Servico" if self.editando else "Nova Ordem de Servico"
-        self.setWindowTitle(titulo)
-        self.setFixedSize(520, 580)
+        self.setWindowTitle("Editar Ordem de Servico" if self.editando else "Nova Ordem de Servico")
+        self.setFixedSize(540, 620)
         self.setStyleSheet(self._estilos())
         self._construir_interface()
-
         if self.editando:
             self._preencher_campos()
 
@@ -55,69 +39,86 @@ class DialogoOrdem(QDialog):
         layout.setContentsMargins(32, 32, 32, 32)
         layout.setSpacing(14)
 
-        titulo = "Editar Ordem de Servico" if self.editando else "Nova Ordem de Servico"
-        label_titulo = QLabel(titulo)
-        label_titulo.setObjectName("titulo")
-        layout.addWidget(label_titulo)
-
+        titulo = QLabel("Editar Ordem de Servico" if self.editando else "Nova Ordem de Servico")
+        titulo.setObjectName("titulo")
+        layout.addWidget(titulo)
         layout.addSpacing(4)
 
-        # Titulo da OS
-        self.campo_titulo = self._campo_texto(layout, "Titulo *", "Ex: Manutencao do computador")
+        self.campo_titulo = self._campo(layout, "TITULO *", "Ex: Manutencao do computador")
 
-        # Descricao
-        label_desc = QLabel("Descricao")
+        label_desc = QLabel("DESCRICAO")
         label_desc.setObjectName("label_campo")
         layout.addWidget(label_desc)
-
         self.campo_descricao = QTextEdit()
         self.campo_descricao.setObjectName("campo_desc")
         self.campo_descricao.setPlaceholderText("Detalhe o problema ou servico a ser realizado...")
-        self.campo_descricao.setFixedHeight(90)
+        self.campo_descricao.setFixedHeight(80)
         layout.addWidget(self.campo_descricao)
 
-        # Linha: Prioridade + Status
+        # Linha: Prioridade + Status + Prazo
         linha1 = QHBoxLayout()
-        linha1.setSpacing(16)
+        linha1.setSpacing(12)
 
-        col_prioridade = QVBoxLayout()
-        label_prio = QLabel("Prioridade")
-        label_prio.setObjectName("label_campo")
-        col_prioridade.addWidget(label_prio)
-        self.combo_prioridade = self._criar_combo([v for _, v in PRIORIDADE_OPCOES])
-        col_prioridade.addWidget(self.combo_prioridade)
-        linha1.addLayout(col_prioridade)
+        col_prio = QVBoxLayout()
+        lp = QLabel("PRIORIDADE")
+        lp.setObjectName("label_campo")
+        col_prio.addWidget(lp)
+        self.combo_prioridade = self._combo([v for _, v in PRIORIDADE_OPCOES])
+        col_prio.addWidget(self.combo_prioridade)
+        linha1.addLayout(col_prio)
 
-        col_status = QVBoxLayout()
-        label_status = QLabel("Status")
-        label_status.setObjectName("label_campo")
-        col_status.addWidget(label_status)
-        self.combo_status = self._criar_combo([v for _, v in STATUS_OPCOES])
+        col_st = QVBoxLayout()
+        ls = QLabel("STATUS")
+        ls.setObjectName("label_campo")
+        col_st.addWidget(ls)
+        self.combo_status = self._combo([v for _, v in STATUS_OPCOES])
         if not self.editando:
             self.combo_status.setEnabled(False)
-        col_status.addWidget(self.combo_status)
-        linha1.addLayout(col_status)
+        col_st.addWidget(self.combo_status)
+        linha1.addLayout(col_st)
+
+        col_prazo = QVBoxLayout()
+        lpz = QLabel("PRAZO")
+        lpz.setObjectName("label_campo")
+        col_prazo.addWidget(lpz)
+        self.campo_prazo = QDateEdit()
+        self.campo_prazo.setObjectName("campo_data")
+        self.campo_prazo.setCalendarPopup(True)
+        self.campo_prazo.setDate(QDate.currentDate())
+        self.campo_prazo.setDisplayFormat("dd/MM/yyyy")
+        self.campo_prazo.setSpecialValueText("Sem prazo")
+        self.campo_prazo.setMinimumDate(QDate(2000, 1, 1))
+        col_prazo.addWidget(self.campo_prazo)
+
+        # Checkbox para sem prazo
+        self.btn_sem_prazo = QPushButton("Sem prazo")
+        self.btn_sem_prazo.setObjectName("btn_toggle_prazo")
+        self.btn_sem_prazo.setCheckable(True)
+        self.btn_sem_prazo.setChecked(True)
+        self.btn_sem_prazo.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_sem_prazo.clicked.connect(self._toggle_prazo)
+        col_prazo.addWidget(self.btn_sem_prazo)
+        self._toggle_prazo()
+        linha1.addLayout(col_prazo)
 
         layout.addLayout(linha1)
 
         # Cliente
-        label_cliente = QLabel("Cliente")
-        label_cliente.setObjectName("label_campo")
-        layout.addWidget(label_cliente)
-
-        self.combo_cliente = self._criar_combo([])
+        lc = QLabel("CLIENTE")
+        lc.setObjectName("label_campo")
+        layout.addWidget(lc)
+        self.combo_cliente = self._combo([])
         self.clientes = listar_clientes()
         self.combo_cliente.addItem("-- Nenhum --", userData=None)
         for c in self.clientes:
             self.combo_cliente.addItem(c["nome"], userData=c["id"])
         layout.addWidget(self.combo_cliente)
 
-        # Tecnico responsavel
-        label_tec = QLabel("Tecnico Responsavel")
-        label_tec.setObjectName("label_campo")
-        layout.addWidget(label_tec)
-
-        self.combo_tecnico = self._criar_combo([])
+        # Tecnico
+        lt2 = QLabel("TECNICO RESPONSAVEL")
+        lt2.setObjectName("label_campo")
+        layout.addWidget(lt2)
+        self.combo_tecnico = self._combo([])
         self.tecnicos = listar_tecnicos()
         self.combo_tecnico.addItem("-- Nenhum --", userData=None)
         for t in self.tecnicos:
@@ -126,26 +127,27 @@ class DialogoOrdem(QDialog):
 
         layout.addStretch()
 
-        # Botoes
-        layout_botoes = QHBoxLayout()
-        layout_botoes.setSpacing(12)
+        bts = QHBoxLayout()
+        bts.setSpacing(12)
+        btn_c = QPushButton("Cancelar")
+        btn_c.setObjectName("btn_secundario")
+        btn_c.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_c.clicked.connect(self.reject)
+        bts.addWidget(btn_c)
 
-        btn_cancelar = QPushButton("Cancelar")
-        btn_cancelar.setObjectName("btn_secundario")
-        btn_cancelar.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_cancelar.clicked.connect(self.reject)
-        layout_botoes.addWidget(btn_cancelar)
+        btn_s = QPushButton("Salvar Alteracoes" if self.editando else "Abrir Ordem")
+        btn_s.setObjectName("btn_primario")
+        btn_s.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_s.clicked.connect(self._salvar)
+        bts.addWidget(btn_s)
+        layout.addLayout(bts)
 
-        texto_salvar = "Salvar Alteracoes" if self.editando else "Abrir Ordem"
-        btn_salvar = QPushButton(texto_salvar)
-        btn_salvar.setObjectName("btn_primario")
-        btn_salvar.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_salvar.clicked.connect(self._salvar)
-        layout_botoes.addWidget(btn_salvar)
+    def _toggle_prazo(self):
+        sem = self.btn_sem_prazo.isChecked()
+        self.campo_prazo.setEnabled(not sem)
+        self.btn_sem_prazo.setText("Sem prazo" if sem else "Definir prazo")
 
-        layout.addLayout(layout_botoes)
-
-    def _campo_texto(self, layout, label_texto, placeholder):
+    def _campo(self, layout, label_texto, placeholder):
         label = QLabel(label_texto)
         label.setObjectName("label_campo")
         layout.addWidget(label)
@@ -155,7 +157,7 @@ class DialogoOrdem(QDialog):
         layout.addWidget(campo)
         return campo
 
-    def _criar_combo(self, opcoes: list):
+    def _combo(self, opcoes):
         combo = QComboBox()
         combo.setObjectName("combo")
         for op in opcoes:
@@ -167,31 +169,40 @@ class DialogoOrdem(QDialog):
         self.campo_descricao.setPlainText(self.ordem.get("descricao", "") or "")
         self.combo_status.setEnabled(True)
 
-        # Prioridade
-        prio_valores = [k for k, _ in PRIORIDADE_OPCOES]
-        prio_atual = self.ordem.get("prioridade", "normal")
-        if prio_atual in prio_valores:
-            self.combo_prioridade.setCurrentIndex(prio_valores.index(prio_atual))
+        prio_vals = [k for k, _ in PRIORIDADE_OPCOES]
+        prio = self.ordem.get("prioridade", "normal")
+        if prio in prio_vals:
+            self.combo_prioridade.setCurrentIndex(prio_vals.index(prio))
 
-        # Status
-        status_valores = [k for k, _ in STATUS_OPCOES]
-        status_atual = self.ordem.get("status", "aberta")
-        if status_atual in status_valores:
-            self.combo_status.setCurrentIndex(status_valores.index(status_atual))
+        st_vals = [k for k, _ in STATUS_OPCOES]
+        st = self.ordem.get("status", "aberta")
+        if st in st_vals:
+            self.combo_status.setCurrentIndex(st_vals.index(st))
+
+        # Prazo
+        prazo = self.ordem.get("prazo")
+        if prazo:
+            try:
+                partes = prazo.split("-")
+                self.campo_prazo.setDate(QDate(int(partes[0]), int(partes[1]), int(partes[2])))
+                self.btn_sem_prazo.setChecked(False)
+                self._toggle_prazo()
+            except Exception:
+                pass
 
         # Cliente
-        cliente_id = self.ordem.get("cliente_id")
-        if cliente_id:
+        cid = self.ordem.get("cliente_id")
+        if cid:
             for i in range(self.combo_cliente.count()):
-                if self.combo_cliente.itemData(i) == cliente_id:
+                if self.combo_cliente.itemData(i) == cid:
                     self.combo_cliente.setCurrentIndex(i)
                     break
 
         # Tecnico
-        tecnico_id = self.ordem.get("tecnico_id")
-        if tecnico_id:
+        tid = self.ordem.get("tecnico_id")
+        if tid:
             for i in range(self.combo_tecnico.count()):
-                if self.combo_tecnico.itemData(i) == tecnico_id:
+                if self.combo_tecnico.itemData(i) == tid:
                     self.combo_tecnico.setCurrentIndex(i)
                     break
 
@@ -199,103 +210,85 @@ class DialogoOrdem(QDialog):
         titulo = self.campo_titulo.text().strip()
         if not titulo:
             QMessageBox.warning(self, "Campo obrigatorio", "O titulo da ordem e obrigatorio.")
-            self.campo_titulo.setFocus()
             return
 
-        descricao = self.campo_descricao.toPlainText().strip()
+        descricao  = self.campo_descricao.toPlainText().strip()
         prioridade = PRIORIDADE_OPCOES[self.combo_prioridade.currentIndex()][0]
-        status = STATUS_OPCOES[self.combo_status.currentIndex()][0]
+        status     = STATUS_OPCOES[self.combo_status.currentIndex()][0]
         cliente_id = self.combo_cliente.currentData()
         tecnico_id = self.combo_tecnico.currentData()
 
+        # Prazo
+        prazo = None
+        if not self.btn_sem_prazo.isChecked():
+            prazo = self.campo_prazo.date().toString("yyyy-MM-dd")
+
         if self.editando:
             atualizar_ordem(self.ordem["id"], titulo, descricao, status,
-                            prioridade, cliente_id, tecnico_id)
+                            prioridade, prazo, cliente_id, tecnico_id)
         else:
-            criar_ordem(titulo, descricao, prioridade, cliente_id, tecnico_id)
+            criar_ordem(titulo, descricao, prioridade, prazo, cliente_id, tecnico_id)
 
         self.accept()
 
     def _estilos(self):
         return """
             QDialog {
-                background-color: #1a1d27;
-                color: #e0e0e0;
+                background-color: #08121e;
+                color: #c8dff5;
                 font-family: 'Segoe UI', sans-serif;
             }
-            QLabel#titulo {
-                font-size: 18px;
-                font-weight: bold;
-                color: #f0f0f0;
-            }
-            QLabel#label_campo {
-                font-size: 12px;
-                color: #9ca3af;
-                font-weight: bold;
-            }
+            QLabel#titulo { font-size: 17px; font-weight: 700; color: #ffffff; }
+            QLabel#label_campo { font-size: 11px; font-weight: 700; color: #2a5a8a; letter-spacing: 0.8px; }
             QLineEdit#campo {
-                background-color: #252836;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 9px 12px;
-                font-size: 13px;
-                color: #e0e0e0;
+                background-color: #0a1828; border: 1px solid #0d2440;
+                border-radius: 6px; padding: 9px 12px; font-size: 13px; color: #c8dff5;
             }
-            QLineEdit#campo:focus {
-                border: 1px solid #7c6af7;
-            }
+            QLineEdit#campo:focus { border-color: #1a6fd4; }
             QTextEdit#campo_desc {
-                background-color: #252836;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-                color: #e0e0e0;
+                background-color: #0a1828; border: 1px solid #0d2440;
+                border-radius: 6px; padding: 8px 12px; font-size: 13px; color: #c8dff5;
             }
-            QTextEdit#campo_desc:focus {
-                border: 1px solid #7c6af7;
-            }
+            QTextEdit#campo_desc:focus { border-color: #1a6fd4; }
             QComboBox#combo {
-                background-color: #252836;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 9px 12px;
-                font-size: 13px;
-                color: #e0e0e0;
+                background-color: #0a1828; border: 1px solid #0d2440;
+                border-radius: 6px; padding: 9px 12px; font-size: 13px; color: #c8dff5;
             }
-            QComboBox#combo:focus {
-                border: 1px solid #7c6af7;
-            }
-            QComboBox#combo::drop-down {
-                border: none;
-            }
+            QComboBox#combo::drop-down { border: none; }
             QComboBox#combo QAbstractItemView {
-                background-color: #252836;
-                color: #e0e0e0;
-                selection-background-color: #7c6af7;
+                background-color: #0a1828; color: #c8dff5;
+                selection-background-color: #1a6fd4; outline: none;
             }
+            QDateEdit#campo_data {
+                background-color: #0a1828; border: 1px solid #0d2440;
+                border-radius: 6px; padding: 9px 12px; font-size: 13px; color: #c8dff5;
+            }
+            QDateEdit#campo_data:focus { border-color: #1a6fd4; }
+            QDateEdit#campo_data::drop-down { border: none; }
+            QCalendarWidget {
+                background-color: #0a1828; color: #c8dff5;
+            }
+            QCalendarWidget QAbstractItemView {
+                background-color: #0a1828; color: #c8dff5;
+                selection-background-color: #1a6fd4;
+            }
+            QPushButton#btn_toggle_prazo {
+                background-color: #0a1828; color: #2a5a8a;
+                border: 1px solid #0d2440; border-radius: 5px;
+                padding: 5px 10px; font-size: 11px;
+            }
+            QPushButton#btn_toggle_prazo:checked { color: #1a6fd4; border-color: #1a6fd4; }
             QPushButton#btn_primario {
-                background-color: #7c6af7;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-size: 13px;
-                font-weight: bold;
+                background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #1a6fd4,stop:1 #0d4fa0);
+                color: white; border: none; border-radius: 6px;
+                padding: 10px 20px; font-size: 13px; font-weight: 600;
             }
             QPushButton#btn_primario:hover {
-                background-color: #6a58e0;
+                background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #2a7fe4,stop:1 #1a5fc0);
             }
             QPushButton#btn_secundario {
-                background-color: #252836;
-                color: #9ca3af;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-size: 13px;
+                background-color: #0a1828; color: #3a6a9a;
+                border: 1px solid #0d2440; border-radius: 6px; padding: 10px 20px; font-size: 13px;
             }
-            QPushButton#btn_secundario:hover {
-                background-color: #2e3347;
-                color: #e0e0e0;
-            }
+            QPushButton#btn_secundario:hover { background-color: #0d2040; color: #c8dff5; }
         """

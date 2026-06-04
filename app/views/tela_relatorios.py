@@ -4,7 +4,7 @@ from datetime import datetime
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QComboBox, QFileDialog,
-    QMessageBox, QSizePolicy
+    QMessageBox, QSizePolicy, QGridLayout
 )
 from PyQt6.QtCore import Qt
 from app.models.ordem_servico import listar_ordens
@@ -15,7 +15,6 @@ from app.controllers.relatorio_controller import gerar_relatorio_os, gerar_relat
 class TelaRelatorios(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet(self._estilos())
         self._construir_interface()
 
     def _construir_interface(self):
@@ -23,180 +22,116 @@ class TelaRelatorios(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(24)
 
-        # Titulo
-        label_titulo = QLabel("Relatorios")
-        label_titulo.setObjectName("titulo_secao")
-        layout.addWidget(label_titulo)
+        # Header
+        col = QVBoxLayout()
+        col.setSpacing(4)
+        titulo = QLabel("Relatorios")
+        titulo.setObjectName("titulo_secao")
+        col.addWidget(titulo)
+        sub = QLabel("Gere e exporte relatorios profissionais em PDF com um clique.")
+        sub.setObjectName("label_sub")
+        col.addWidget(sub)
+        layout.addLayout(col)
 
-        label_sub = QLabel("Gere e exporte relatorios em PDF diretamente do sistema.")
-        label_sub.setObjectName("label_sub")
-        layout.addWidget(label_sub)
-
-        # Grid de cards de relatorio
-        grid = QHBoxLayout()
-        grid.setSpacing(20)
-
-        grid.addWidget(self._card_relatorio(
-            titulo="Ordens de Servico",
-            descricao="Lista completa das OS com status, prioridade, cliente e tecnico responsavel.",
-            tipo="os"
-        ))
-
-        grid.addWidget(self._card_relatorio(
-            titulo="Clientes",
-            descricao="Cadastro completo de todos os clientes com contatos e documentos.",
-            tipo="clientes"
-        ))
-
-        layout.addLayout(grid)
-        layout.addStretch()
-
-    def _card_relatorio(self, titulo: str, descricao: str, tipo: str):
-        card = QFrame()
-        card.setObjectName("card_relatorio")
-        card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(12)
-
-        label_titulo = QLabel(titulo)
-        label_titulo.setObjectName("card_titulo")
-        layout.addWidget(label_titulo)
-
-        label_desc = QLabel(descricao)
-        label_desc.setObjectName("card_desc")
-        label_desc.setWordWrap(True)
-        layout.addWidget(label_desc)
+        # Linha separadora
+        sep = QFrame()
+        sep.setObjectName("header_line")
+        layout.addWidget(sep)
 
         layout.addSpacing(8)
 
-        # Filtro de status (apenas para OS)
+        # Grid de cards
+        grid = QHBoxLayout()
+        grid.setSpacing(20)
+        grid.addWidget(self._card_relatorio(
+            "Ordens de Servico",
+            "Lista completa de OS com status, prioridade, cliente e tecnico responsavel. Inclui resumo por status no topo do documento.",
+            tipo="os"
+        ))
+        grid.addWidget(self._card_relatorio(
+            "Clientes",
+            "Cadastro completo de todos os clientes com dados de contato e documentos. Ideal para consultas rapidas.",
+            tipo="clientes"
+        ))
+        layout.addLayout(grid)
+        layout.addStretch()
+
+    def _card_relatorio(self, titulo, descricao, tipo):
+        card = QFrame()
+        card.setObjectName("card_resumo")
+        card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        card.setMinimumHeight(220)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(12)
+
+        # Indicador topo
+        topo = QHBoxLayout()
+        dot = QLabel()
+        dot.setFixedSize(8, 8)
+        dot.setStyleSheet("background-color:#4a9eff; border-radius:4px; min-width:8px; max-width:8px; min-height:8px; max-height:8px;")
+        topo.addWidget(dot)
+        lbl_tipo = QLabel("PDF")
+        lbl_tipo.setStyleSheet("font-size:10px; color:#1a4a7a; font-weight:700; letter-spacing:1px;")
+        topo.addWidget(lbl_tipo)
+        topo.addStretch()
+        layout.addLayout(topo)
+
+        lt = QLabel(titulo)
+        lt.setStyleSheet("font-size:17px; font-weight:700; color:#ffffff;")
+        layout.addWidget(lt)
+
+        ld = QLabel(descricao)
+        ld.setStyleSheet("font-size:12px; color:#2a5a8a; line-height:1.5;")
+        ld.setWordWrap(True)
+        layout.addWidget(ld)
+
+        layout.addStretch()
+
+        # Filtro apenas para OS
         if tipo == "os":
-            label_filtro = QLabel("Filtrar por status:")
-            label_filtro.setObjectName("label_filtro")
-            layout.addWidget(label_filtro)
-
-            combo = QComboBox()
-            combo.setObjectName("combo")
-            combo.addItem("Todos os status", userData=None)
-            combo.addItem("Aberta",          userData="aberta")
-            combo.addItem("Em Andamento",    userData="em_andamento")
-            combo.addItem("Concluida",       userData="concluida")
-            combo.addItem("Cancelada",       userData="cancelada")
-            layout.addWidget(combo)
-            self.combo_status_os = combo
-
-        layout.addSpacing(4)
+            lf = QLabel("FILTRAR POR STATUS")
+            lf.setObjectName("label_campo")
+            layout.addWidget(lf)
+            self.combo_status_os = QComboBox()
+            self.combo_status_os.setFixedHeight(36)
+            self.combo_status_os.addItem("Todos os status", userData=None)
+            self.combo_status_os.addItem("Aberta",          userData="aberta")
+            self.combo_status_os.addItem("Em Andamento",    userData="em_andamento")
+            self.combo_status_os.addItem("Concluida",       userData="concluida")
+            self.combo_status_os.addItem("Cancelada",       userData="cancelada")
+            layout.addWidget(self.combo_status_os)
 
         btn = QPushButton("Exportar PDF")
-        btn.setObjectName("btn_exportar")
+        btn.setObjectName("btn_primario")
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setFixedHeight(40)
         btn.clicked.connect(lambda _, t=tipo: self._exportar(t))
         layout.addWidget(btn)
 
         return card
 
-    def _exportar(self, tipo: str):
+    def _exportar(self, tipo):
         agora = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-        if tipo == "os":
-            nome_sugerido = f"relatorio_os_{agora}.pdf"
-        else:
-            nome_sugerido = f"relatorio_clientes_{agora}.pdf"
-
+        nome = f"relatorio_{'os' if tipo == 'os' else 'clientes'}_{agora}.pdf"
         caminho, _ = QFileDialog.getSaveFileName(
-            self,
-            "Salvar relatorio PDF",
-            os.path.join(os.path.expanduser("~"), "Desktop", nome_sugerido),
+            self, "Salvar relatorio PDF",
+            os.path.join(os.path.expanduser("~"), "Desktop", nome),
             "PDF (*.pdf)"
         )
-
         if not caminho:
             return
 
         try:
             if tipo == "os":
-                filtro_status = self.combo_status_os.currentData()
-                ordens = listar_ordens(filtro_status=filtro_status)
-                filtros = {}
-                if filtro_status:
-                    filtros["status"] = filtro_status
+                filtro = self.combo_status_os.currentData()
+                ordens = listar_ordens(filtro_status=filtro)
+                filtros = {"status": filtro} if filtro else {}
                 gerar_relatorio_os(ordens, filtros, caminho)
+            else:
+                gerar_relatorio_clientes(listar_clientes(), caminho)
 
-            elif tipo == "clientes":
-                clientes = listar_clientes()
-                gerar_relatorio_clientes(clientes, caminho)
-
-            QMessageBox.information(
-                self,
-                "Relatorio gerado!",
-                f"PDF salvo com sucesso em:\n{caminho}"
-            )
-
-            # Abre o arquivo automaticamente
+            QMessageBox.information(self, "Relatorio gerado!", f"PDF salvo com sucesso em:\n{caminho}")
             os.startfile(caminho)
-
         except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Erro ao gerar PDF",
-                f"Ocorreu um erro ao gerar o relatorio:\n{str(e)}"
-            )
-
-    def _estilos(self):
-        return """
-            QLabel#titulo_secao {
-                font-size: 20px;
-                font-weight: bold;
-                color: #f0f0f0;
-            }
-            QLabel#label_sub {
-                font-size: 13px;
-                color: #6b7280;
-            }
-            QFrame#card_relatorio {
-                background-color: #1a1d27;
-                border: 1px solid #2e3347;
-                border-radius: 12px;
-                min-height: 240px;
-            }
-            QLabel#card_titulo {
-                font-size: 16px;
-                font-weight: bold;
-                color: #f0f0f0;
-            }
-            QLabel#card_desc {
-                font-size: 12px;
-                color: #9ca3af;
-                line-height: 1.5;
-            }
-            QLabel#label_filtro {
-                font-size: 12px;
-                color: #9ca3af;
-                font-weight: bold;
-            }
-            QComboBox#combo {
-                background-color: #252836;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-                color: #e0e0e0;
-            }
-            QComboBox#combo::drop-down { border: none; }
-            QComboBox#combo QAbstractItemView {
-                background-color: #252836;
-                color: #e0e0e0;
-                selection-background-color: #7c6af7;
-            }
-            QPushButton#btn_exportar {
-                background-color: #7c6af7;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 10px;
-                font-size: 13px;
-                font-weight: bold;
-            }
-            QPushButton#btn_exportar:hover { background-color: #6a58e0; }
-        """
+            QMessageBox.critical(self, "Erro ao gerar PDF", f"Ocorreu um erro:\n{str(e)}")

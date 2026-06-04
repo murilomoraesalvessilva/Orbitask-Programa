@@ -38,6 +38,7 @@ def criar_tabelas():
             descricao TEXT,
             status TEXT NOT NULL DEFAULT 'aberta',
             prioridade TEXT NOT NULL DEFAULT 'normal',
+            prazo DATE,
             cliente_id INTEGER,
             tecnico_id INTEGER,
             valor_servico REAL DEFAULT 0.0,
@@ -65,21 +66,26 @@ def criar_tabelas():
         )
     """)
 
-    # Adiciona colunas financeiras caso o banco ja exista (migracao segura)
-    try:
-        cursor.execute("ALTER TABLE ordens_servico ADD COLUMN valor_servico REAL DEFAULT 0.0")
-    except Exception:
-        pass
-    try:
-        cursor.execute("ALTER TABLE ordens_servico ADD COLUMN valor_pecas REAL DEFAULT 0.0")
-    except Exception:
-        pass
-    try:
-        cursor.execute("ALTER TABLE ordens_servico ADD COLUMN status_pagamento TEXT DEFAULT 'pendente'")
-    except Exception:
-        pass
-
     conn.commit()
+    conn.close()
+
+
+def migracoes_seguras():
+    """Adiciona colunas novas em bancos ja existentes sem quebrar dados."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    colunas = [
+        ("ALTER TABLE ordens_servico ADD COLUMN valor_servico REAL DEFAULT 0.0",),
+        ("ALTER TABLE ordens_servico ADD COLUMN valor_pecas REAL DEFAULT 0.0",),
+        ("ALTER TABLE ordens_servico ADD COLUMN status_pagamento TEXT DEFAULT 'pendente'",),
+        ("ALTER TABLE ordens_servico ADD COLUMN prazo DATE",),
+    ]
+    for (sql,) in colunas:
+        try:
+            cursor.execute(sql)
+            conn.commit()
+        except Exception:
+            pass
     conn.close()
 
 
@@ -87,8 +93,7 @@ def criar_admin_padrao():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM usuarios")
-    total = cursor.fetchone()[0]
-    if total == 0:
+    if cursor.fetchone()[0] == 0:
         senha_hash = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt()).decode()
         cursor.execute("""
             INSERT INTO usuarios (nome, email, senha, perfil)
@@ -100,4 +105,5 @@ def criar_admin_padrao():
 
 def inicializar_banco():
     criar_tabelas()
+    migracoes_seguras()
     criar_admin_padrao()
