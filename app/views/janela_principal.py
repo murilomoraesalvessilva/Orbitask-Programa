@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from app.models.cliente import contar_clientes
 from app.models.ordem_servico import contar_por_status
+from app.models.equipamento import contar_equipamentos
 
 
 class JanelaPrincipal(QMainWindow):
@@ -53,12 +54,17 @@ class JanelaPrincipal(QMainWindow):
         self.pagina_clientes = TelaClientes()
         self.stack.addWidget(self.pagina_clientes)
 
-        # Pagina 3: Usuarios
+        # Pagina 3: Equipamentos
+        from app.views.tela_equipamentos import TelaEquipamentos
+        self.pagina_equipamentos = TelaEquipamentos()
+        self.stack.addWidget(self.pagina_equipamentos)
+
+        # Pagina 4: Usuarios
         from app.views.tela_usuarios import TelaUsuarios
         self.pagina_usuarios = TelaUsuarios(usuario_logado=self.usuario)
         self.stack.addWidget(self.pagina_usuarios)
 
-        # Pagina 4: Relatorios
+        # Pagina 5: Relatorios
         from app.views.tela_relatorios import TelaRelatorios
         self.pagina_relatorios = TelaRelatorios()
         self.stack.addWidget(self.pagina_relatorios)
@@ -84,6 +90,7 @@ class JanelaPrincipal(QMainWindow):
             "Dashboard",
             "Ordens de Servico",
             "Clientes",
+            "Equipamentos",
             "Usuarios",
             "Relatorios",
         ]
@@ -167,12 +174,14 @@ class JanelaPrincipal(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(16)
 
-        self.card_abertas    = self._criar_card("Ordens Abertas", "0", "#7c6af7")
-        self.card_andamento  = self._criar_card("Em Andamento",   "0", "#f59e0b")
-        self.card_concluidas = self._criar_card("Concluidas",     "0", "#10b981")
-        self.card_clientes   = self._criar_card("Clientes",       "0", "#3b82f6")
+        self.card_abertas      = self._criar_card("Ordens Abertas",  "0", "#7c6af7")
+        self.card_andamento    = self._criar_card("Em Andamento",    "0", "#f59e0b")
+        self.card_concluidas   = self._criar_card("Concluidas",      "0", "#10b981")
+        self.card_clientes     = self._criar_card("Clientes",        "0", "#3b82f6")
+        self.card_equipamentos = self._criar_card("Equipamentos",    "0", "#ec4899")
 
-        for card in [self.card_abertas, self.card_andamento, self.card_concluidas, self.card_clientes]:
+        for card in [self.card_abertas, self.card_andamento, self.card_concluidas,
+                     self.card_clientes, self.card_equipamentos]:
             layout.addWidget(card)
 
         return frame
@@ -187,7 +196,7 @@ class JanelaPrincipal(QMainWindow):
 
         label_valor = QLabel(valor)
         label_valor.setObjectName("card_valor")
-        label_valor.setStyleSheet(f"color: {cor}; font-size: 32px; font-weight: bold;")
+        label_valor.setStyleSheet(f"color: {cor}; font-size: 28px; font-weight: bold;")
         layout.addWidget(label_valor)
 
         label_titulo = QLabel(titulo)
@@ -203,9 +212,11 @@ class JanelaPrincipal(QMainWindow):
         self.card_andamento._label_valor.setText(str(contagens.get("em_andamento", 0)))
         self.card_concluidas._label_valor.setText(str(contagens.get("concluida", 0)))
         self.card_clientes._label_valor.setText(str(contar_clientes()))
+        self.card_equipamentos._label_valor.setText(str(contar_equipamentos()))
 
     def _navegar(self, indice: int):
-        titulos = ["Dashboard", "Ordens de Servico", "Clientes", "Usuarios", "Relatorios"]
+        titulos = ["Dashboard", "Ordens de Servico", "Clientes",
+                   "Equipamentos", "Usuarios", "Relatorios"]
 
         for i, btn in enumerate(self.botoes_menu):
             btn.setChecked(i == indice)
@@ -220,6 +231,8 @@ class JanelaPrincipal(QMainWindow):
         elif indice == 2:
             self.pagina_clientes._carregar_clientes()
         elif indice == 3:
+            self.pagina_equipamentos._carregar_equipamentos()
+        elif indice == 4:
             self.pagina_usuarios._carregar_usuarios()
 
     def _sair(self):
@@ -310,7 +323,7 @@ class JanelaPrincipal(QMainWindow):
                 background-color: #1a1d27;
                 border-radius: 12px;
                 border: 1px solid #2e3347;
-                min-height: 120px;
+                min-height: 110px;
             }
             QLabel#card_titulo {
                 font-size: 12px;
