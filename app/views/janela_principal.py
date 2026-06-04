@@ -53,12 +53,16 @@ class JanelaPrincipal(QMainWindow):
         self.pagina_clientes = TelaClientes()
         self.stack.addWidget(self.pagina_clientes)
 
-        # Paginas futuras (placeholder)
-        for texto in ["Usuarios - Em desenvolvimento...", "Relatorios - Em desenvolvimento..."]:
-            ph = QLabel(texto)
-            ph.setObjectName("placeholder")
-            ph.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.stack.addWidget(ph)
+        # Pagina 3: Usuarios
+        from app.views.tela_usuarios import TelaUsuarios
+        self.pagina_usuarios = TelaUsuarios(usuario_logado=self.usuario)
+        self.stack.addWidget(self.pagina_usuarios)
+
+        # Pagina 4: Relatorios (placeholder)
+        ph = QLabel("Relatorios - Em desenvolvimento...")
+        ph.setObjectName("placeholder")
+        ph.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.stack.addWidget(ph)
 
         self.layout_conteudo.addWidget(self.stack)
         layout_raiz.addWidget(area, stretch=1)
@@ -99,6 +103,25 @@ class JanelaPrincipal(QMainWindow):
 
         layout.addStretch()
 
+        # Info do usuario logado
+        frame_usuario = QFrame()
+        frame_usuario.setObjectName("frame_usuario")
+        layout_u = QVBoxLayout(frame_usuario)
+        layout_u.setContentsMargins(8, 12, 8, 12)
+        layout_u.setSpacing(2)
+
+        label_nome = QLabel(self.usuario["nome"].split()[0])
+        label_nome.setObjectName("sidebar_nome")
+        layout_u.addWidget(label_nome)
+
+        label_perfil = QLabel(
+            "Administrador" if self.usuario["perfil"] == "admin" else "Tecnico"
+        )
+        label_perfil.setObjectName("sidebar_perfil")
+        layout_u.addWidget(label_perfil)
+
+        layout.addWidget(frame_usuario)
+
         btn_sair = QPushButton("Sair")
         btn_sair.setObjectName("btn_sair")
         btn_sair.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -118,7 +141,7 @@ class JanelaPrincipal(QMainWindow):
 
         layout_header.addStretch()
 
-        nome = self.usuario['nome'].split()[0]
+        nome = self.usuario["nome"].split()[0]
         label_usuario = QLabel(f"Ola, {nome}")
         label_usuario.setObjectName("label_usuario")
         layout_header.addWidget(label_usuario)
@@ -199,6 +222,8 @@ class JanelaPrincipal(QMainWindow):
             self.pagina_ordens._aplicar_filtros()
         elif indice == 2:
             self.pagina_clientes._carregar_clientes()
+        elif indice == 3:
+            self.pagina_usuarios._carregar_usuarios()
 
     def _sair(self):
         from app.views.tela_login import TelaLogin
@@ -259,6 +284,20 @@ class JanelaPrincipal(QMainWindow):
             QPushButton#btn_sair:hover {
                 background-color: #2d1f1f;
                 color: #f87171;
+            }
+            QFrame#frame_usuario {
+                background-color: #252836;
+                border-radius: 8px;
+                border: 1px solid #2e3347;
+            }
+            QLabel#sidebar_nome {
+                font-size: 13px;
+                font-weight: bold;
+                color: #e0e0e0;
+            }
+            QLabel#sidebar_perfil {
+                font-size: 11px;
+                color: #7c6af7;
             }
             QWidget#area_conteudo { background-color: #0f1117; }
             QLabel#titulo_pagina {
