@@ -58,11 +58,10 @@ class JanelaPrincipal(QMainWindow):
         self.pagina_usuarios = TelaUsuarios(usuario_logado=self.usuario)
         self.stack.addWidget(self.pagina_usuarios)
 
-        # Pagina 4: Relatorios (placeholder)
-        ph = QLabel("Relatorios - Em desenvolvimento...")
-        ph.setObjectName("placeholder")
-        ph.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.stack.addWidget(ph)
+        # Pagina 4: Relatorios
+        from app.views.tela_relatorios import TelaRelatorios
+        self.pagina_relatorios = TelaRelatorios()
+        self.stack.addWidget(self.pagina_relatorios)
 
         self.layout_conteudo.addWidget(self.stack)
         layout_raiz.addWidget(area, stretch=1)
@@ -100,10 +99,8 @@ class JanelaPrincipal(QMainWindow):
             self.botoes_menu.append(btn)
 
         self.botoes_menu[0].setChecked(True)
-
         layout.addStretch()
 
-        # Info do usuario logado
         frame_usuario = QFrame()
         frame_usuario.setObjectName("frame_usuario")
         layout_u = QVBoxLayout(frame_usuario)
