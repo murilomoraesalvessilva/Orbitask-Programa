@@ -1,83 +1,139 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QFrame, QMessageBox
+    QLineEdit, QPushButton, QMessageBox
 )
 from PyQt6.QtCore import Qt
 from app.models.cliente import criar_cliente, atualizar_cliente
 
+ESTILO = """
+    QDialog {
+        background-color: #08121e;
+        color: #c8dff5;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    QWidget {
+        background-color: #08121e;
+        color: #c8dff5;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    QLabel {
+        background-color: transparent;
+        color: #c8dff5;
+        font-size: 13px;
+    }
+    QLabel#campo_label {
+        background-color: transparent;
+        color: #2a5a8a;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+    }
+    QLabel#titulo {
+        background-color: transparent;
+        color: #ffffff;
+        font-size: 17px;
+        font-weight: 700;
+    }
+    QLineEdit {
+        background-color: #0d1e30;
+        border: 1px solid #0d2e4e;
+        border-radius: 6px;
+        padding: 9px 12px;
+        font-size: 13px;
+        color: #c8dff5;
+        selection-background-color: #1a6fd4;
+    }
+    QLineEdit:focus {
+        border: 1px solid #1a6fd4;
+        background-color: #0d2030;
+    }
+    QPushButton#btn_primario {
+        background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #1a6fd4,stop:1 #0d4fa0);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    QPushButton#btn_primario:hover {
+        background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #2a7fe4,stop:1 #1a5fc0);
+    }
+    QPushButton#btn_secundario {
+        background-color: #0a1828;
+        color: #3a6a9a;
+        border: 1px solid #0d2440;
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-size: 13px;
+    }
+    QPushButton#btn_secundario:hover {
+        background-color: #0d2040;
+        color: #c8dff5;
+    }
+"""
+
 
 class DialogoCliente(QDialog):
-    """Dialogo para criar ou editar um cliente."""
-
     def __init__(self, parent=None, cliente: dict = None):
         super().__init__(parent)
-        self.cliente = cliente  # None = novo cliente, dict = edicao
+        self.cliente = cliente
         self.editando = cliente is not None
-
-        titulo = "Editar Cliente" if self.editando else "Novo Cliente"
-        self.setWindowTitle(titulo)
-        self.setFixedSize(480, 460)
-        self.setStyleSheet(self._estilos())
-        self._construir_interface()
-
+        self.setWindowTitle("Editar Cliente" if self.editando else "Novo Cliente")
+        self.setFixedSize(460, 420)
+        self.setStyleSheet(ESTILO)
+        self._construir()
         if self.editando:
-            self._preencher_campos()
+            self._preencher()
 
-    def _construir_interface(self):
+    def _construir(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 32, 32, 32)
-        layout.setSpacing(16)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(0)
 
-        # Titulo
-        titulo = "Editar Cliente" if self.editando else "Novo Cliente"
-        label_titulo = QLabel(titulo)
-        label_titulo.setObjectName("titulo")
-        layout.addWidget(label_titulo)
+        titulo = QLabel("Editar Cliente" if self.editando else "Novo Cliente")
+        titulo.setObjectName("titulo")
+        layout.addWidget(titulo)
+        layout.addSpacing(20)
 
-        layout.addSpacing(8)
+        self.campo_nome      = self._campo(layout, "NOME *",      "Nome completo")
+        layout.addSpacing(12)
+        self.campo_telefone  = self._campo(layout, "TELEFONE",    "(00) 00000-0000")
+        layout.addSpacing(12)
+        self.campo_email     = self._campo(layout, "E-MAIL",      "cliente@email.com")
+        layout.addSpacing(12)
+        self.campo_documento = self._campo(layout, "CPF / CNPJ",  "000.000.000-00")
+        layout.addSpacing(12)
+        self.campo_endereco  = self._campo(layout, "ENDERECO",    "Rua, numero, bairro, cidade")
+        layout.addSpacing(24)
 
-        # Campos
-        self.campo_nome = self._criar_campo(layout, "Nome *", "Nome completo")
-        self.campo_telefone = self._criar_campo(layout, "Telefone", "(00) 00000-0000")
-        self.campo_email = self._criar_campo(layout, "E-mail", "cliente@email.com")
-        self.campo_documento = self._criar_campo(layout, "CPF / CNPJ", "000.000.000-00")
-        self.campo_endereco = self._criar_campo(layout, "Endereco", "Rua, numero, bairro, cidade")
+        bts = QHBoxLayout()
+        bts.setSpacing(12)
+        btn_c = QPushButton("Cancelar")
+        btn_c.setObjectName("btn_secundario")
+        btn_c.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_c.clicked.connect(self.reject)
+        bts.addWidget(btn_c)
 
-        layout.addStretch()
+        btn_s = QPushButton("Salvar Alteracoes" if self.editando else "Cadastrar Cliente")
+        btn_s.setObjectName("btn_primario")
+        btn_s.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_s.clicked.connect(self._salvar)
+        bts.addWidget(btn_s)
+        layout.addLayout(bts)
 
-        # Botoes
-        layout_botoes = QHBoxLayout()
-        layout_botoes.setSpacing(12)
-
-        btn_cancelar = QPushButton("Cancelar")
-        btn_cancelar.setObjectName("btn_secundario")
-        btn_cancelar.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_cancelar.clicked.connect(self.reject)
-        layout_botoes.addWidget(btn_cancelar)
-
-        texto_salvar = "Salvar Alteracoes" if self.editando else "Cadastrar Cliente"
-        btn_salvar = QPushButton(texto_salvar)
-        btn_salvar.setObjectName("btn_primario")
-        btn_salvar.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_salvar.clicked.connect(self._salvar)
-        layout_botoes.addWidget(btn_salvar)
-
-        layout.addLayout(layout_botoes)
-
-    def _criar_campo(self, layout, label_texto, placeholder):
-        label = QLabel(label_texto)
-        label.setObjectName("label_campo")
-        layout.addWidget(label)
-
+    def _campo(self, layout, label_txt, placeholder):
+        lbl = QLabel(label_txt)
+        lbl.setObjectName("campo_label")
+        layout.addWidget(lbl)
+        layout.addSpacing(4)
         campo = QLineEdit()
         campo.setPlaceholderText(placeholder)
-        campo.setObjectName("campo")
         layout.addWidget(campo)
-
         return campo
 
-    def _preencher_campos(self):
+    def _preencher(self):
         self.campo_nome.setText(self.cliente.get("nome", ""))
         self.campo_telefone.setText(self.cliente.get("telefone", "") or "")
         self.campo_email.setText(self.cliente.get("email", "") or "")
@@ -88,71 +144,17 @@ class DialogoCliente(QDialog):
         nome = self.campo_nome.text().strip()
         if not nome:
             QMessageBox.warning(self, "Campo obrigatorio", "O nome do cliente e obrigatorio.")
-            self.campo_nome.setFocus()
             return
-
-        telefone = self.campo_telefone.text().strip()
-        email = self.campo_email.text().strip()
-        documento = self.campo_documento.text().strip()
-        endereco = self.campo_endereco.text().strip()
-
         if self.editando:
-            atualizar_cliente(self.cliente["id"], nome, telefone, email, documento, endereco)
+            atualizar_cliente(self.cliente["id"], nome,
+                self.campo_telefone.text().strip(),
+                self.campo_email.text().strip(),
+                self.campo_documento.text().strip(),
+                self.campo_endereco.text().strip())
         else:
-            criar_cliente(nome, telefone, email, documento, endereco)
-
+            criar_cliente(nome,
+                self.campo_telefone.text().strip(),
+                self.campo_email.text().strip(),
+                self.campo_documento.text().strip(),
+                self.campo_endereco.text().strip())
         self.accept()
-
-    def _estilos(self):
-        return """
-            QDialog {
-                background-color: #1a1d27;
-                color: #e0e0e0;
-                font-family: 'Segoe UI', sans-serif;
-            }
-            QLabel#titulo {
-                font-size: 18px;
-                font-weight: bold;
-                color: #f0f0f0;
-            }
-            QLabel#label_campo {
-                font-size: 12px;
-                color: #9ca3af;
-                font-weight: bold;
-            }
-            QLineEdit#campo {
-                background-color: #252836;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 9px 12px;
-                font-size: 13px;
-                color: #e0e0e0;
-            }
-            QLineEdit#campo:focus {
-                border: 1px solid #7c6af7;
-            }
-            QPushButton#btn_primario {
-                background-color: #7c6af7;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-size: 13px;
-                font-weight: bold;
-            }
-            QPushButton#btn_primario:hover {
-                background-color: #6a58e0;
-            }
-            QPushButton#btn_secundario {
-                background-color: #252836;
-                color: #9ca3af;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-size: 13px;
-            }
-            QPushButton#btn_secundario:hover {
-                background-color: #2e3347;
-                color: #e0e0e0;
-            }
-        """

@@ -2,18 +2,18 @@
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QFrame, QSizePolicy, QStackedWidget,
-    QCalendarWidget, QScrollArea, QToolTip
+    QCalendarWidget, QScrollArea, QGridLayout
 )
-from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QTextCharFormat, QColor, QFont
+from PyQt6.QtCore import Qt, QDate, QTimer, QTime
+from PyQt6.QtGui import QTextCharFormat, QColor, QFont, QCursor
 from app.models.cliente import contar_clientes
-from app.models.ordem_servico import contar_por_status, listar_prazos
+from app.models.ordem_servico import contar_por_status, listar_prazos, listar_ordens
 from app.models.equipamento import contar_equipamentos
 from app.models.financeiro import resumo_financeiro
 
 
-def fmt_brl(valor):
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+def fmt_brl(v):
+    return f"R$ {v:,.2f}".replace(",","X").replace(".",",").replace("X",".")
 
 
 ESTILO_GLOBAL = """
@@ -25,6 +25,7 @@ ESTILO_GLOBAL = """
     QScrollBar:horizontal { background: #0a1828; height: 6px; border-radius: 3px; }
     QScrollBar::handle:horizontal { background: #1a4a7a; border-radius: 3px; }
     QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0px; }
+
     QFrame#sidebar { background-color: #040c18; border-right: 1px solid #0a1e34; }
     QLabel#sidebar_logo { font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 1px; padding: 4px 8px; }
     QLabel#sidebar_logo_sub { font-size: 10px; color: #1a4a7a; letter-spacing: 1px; padding: 0 10px; }
@@ -34,19 +35,27 @@ ESTILO_GLOBAL = """
     QPushButton#btn_sair { text-align: left; background-color: transparent; border: none; border-radius: 6px; padding: 11px 14px; font-size: 13px; color: #2a4a6a; }
     QPushButton#btn_sair:hover { background-color: #1a0a0a; color: #e05555; }
     QFrame#frame_usuario { background-color: #0a1828; border-radius: 8px; border: 1px solid #0d2440; }
-    QLabel#sidebar_nome { font-size: 13px; font-weight: 600; color: #c8dff5; }
-    QLabel#sidebar_perfil { font-size: 11px; color: #1a6fd4; }
+    QLabel#sidebar_nome { font-size: 13px; font-weight: 600; color: #c8dff5; background: transparent; }
+    QLabel#sidebar_perfil { font-size: 11px; color: #1a6fd4; background: transparent; }
+
     QWidget#area_conteudo { background-color: #06101e; }
-    QLabel#titulo_pagina { font-size: 20px; font-weight: 700; color: #ffffff; }
-    QLabel#label_usuario { font-size: 13px; color: #2a5a8a; }
+    QLabel#titulo_pagina { font-size: 20px; font-weight: 700; color: #ffffff; background: transparent; }
+    QLabel#label_usuario { font-size: 13px; color: #2a5a8a; background: transparent; }
     QFrame#header_line { background-color: #0a1e34; max-height: 1px; min-height: 1px; }
     QFrame#card_resumo { background-color: #080f1e; border-radius: 10px; border: 1px solid #0a1e34; }
     QFrame#card_resumo:hover { border: 1px solid #1a4a7a; background-color: #0a1428; }
-    QLabel#card_titulo { font-size: 11px; color: #2a5a8a; font-weight: 600; letter-spacing: 0.5px; }
+    QLabel#card_titulo { font-size: 11px; color: #2a5a8a; font-weight: 600; letter-spacing: 0.5px; background: transparent; }
+    QLabel#label_contador { font-size: 12px; color: #1a4a7a; background: transparent; }
+    QLabel#titulo_secao { font-size: 20px; font-weight: 700; color: #ffffff; background: transparent; }
+    QLabel#label_sub { font-size: 13px; color: #2a5a8a; background: transparent; }
+    QLabel#label_dica { font-size: 12px; color: #1a4a7a; background: transparent; }
+    QLabel#placeholder { font-size: 14px; color: #1a3a5a; background: transparent; }
+
     QTableWidget { background-color: #080f1e; border: 1px solid #0a1e34; border-radius: 10px; gridline-color: transparent; font-size: 13px; color: #c8dff5; alternate-background-color: #0a1428; selection-background-color: #0d2540; selection-color: #4a9eff; }
     QTableWidget::item { padding: 8px; border: none; }
     QTableWidget::item:selected { background-color: #0d2540; color: #4a9eff; }
     QHeaderView::section { background-color: #06101e; color: #2a5a8a; font-size: 11px; font-weight: 700; padding: 12px 8px; border: none; border-bottom: 1px solid #0a1e34; letter-spacing: 0.5px; }
+
     QLineEdit { background-color: #080f1e; border: 1px solid #0a1e34; border-radius: 6px; padding: 8px 14px; font-size: 13px; color: #c8dff5; }
     QLineEdit:focus { border: 1px solid #1a6fd4; background-color: #0a1428; }
     QComboBox { background-color: #080f1e; border: 1px solid #0a1e34; border-radius: 6px; padding: 8px 14px; font-size: 13px; color: #c8dff5; }
@@ -55,6 +64,7 @@ ESTILO_GLOBAL = """
     QComboBox QAbstractItemView { background-color: #0a1828; color: #c8dff5; border: 1px solid #0d2440; selection-background-color: #1a6fd4; outline: none; }
     QTextEdit { background-color: #080f1e; border: 1px solid #0a1e34; border-radius: 6px; padding: 8px 14px; font-size: 13px; color: #c8dff5; }
     QTextEdit:focus { border: 1px solid #1a6fd4; }
+
     QPushButton#btn_primario { background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #1a6fd4,stop:1 #0d4fa0); color: white; border: none; border-radius: 6px; padding: 9px 18px; font-size: 13px; font-weight: 600; }
     QPushButton#btn_primario:hover { background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #2a7fe4,stop:1 #1a5fc0); }
     QPushButton#btn_secundario { background-color: #0a1828; color: #3a6a9a; border: 1px solid #0d2440; border-radius: 6px; padding: 9px 18px; font-size: 13px; }
@@ -67,21 +77,35 @@ ESTILO_GLOBAL = """
     QPushButton#btn_ativar:hover { background-color: #2ab87a; color: white; }
     QPushButton#btn_desativar { background-color: #1a1008; color: #e0a020; border: 1px solid #3a2808; border-radius: 5px; padding: 4px 12px; font-size: 12px; }
     QPushButton#btn_desativar:hover { background-color: #e0a020; color: white; }
-    QDialog { background-color: #08121e; color: #c8dff5; }
-    QLabel#titulo { font-size: 17px; font-weight: 700; color: #ffffff; }
-    QLabel#label_campo { font-size: 11px; font-weight: 700; color: #2a5a8a; letter-spacing: 0.8px; }
-    QLabel#label_contador { font-size: 12px; color: #1a4a7a; }
-    QLabel#titulo_secao { font-size: 20px; font-weight: 700; color: #ffffff; }
+
+    QDialog, QDialog QWidget { background-color: #08121e; color: #c8dff5; }
     QTabWidget::pane { border: 1px solid #0a1e34; border-radius: 8px; background-color: #08121e; }
     QTabBar::tab { background-color: #080f1e; color: #2a5a8a; padding: 9px 22px; border: none; font-size: 13px; }
     QTabBar::tab:selected { background-color: #0d2540; color: #4a9eff; font-weight: 600; border-bottom: 2px solid #1a6fd4; }
     QMessageBox { background-color: #08121e; color: #c8dff5; }
     QMessageBox QPushButton { background-color: #0d2540; color: #4a9eff; border: 1px solid #1a4a7a; border-radius: 5px; padding: 6px 20px; min-width: 80px; }
     QMessageBox QPushButton:hover { background-color: #1a6fd4; color: white; }
-    QLabel#placeholder { font-size: 14px; color: #1a3a5a; }
-    QLabel#label_dica { font-size: 12px; color: #1a4a7a; }
-    QLabel#label_sub { font-size: 13px; color: #2a5a8a; }
+    QDateEdit { background-color: #0d1e30; border: 1px solid #0d2e4e; border-radius: 6px; padding: 9px 12px; font-size: 13px; color: #c8dff5; }
+    QDateEdit:focus { border: 1px solid #1a6fd4; }
+    QDateEdit::drop-down { border: none; }
 """
+
+# Cores e labels dos atalhos do dashboard
+ATALHOS = [
+    ("Ordens de Servico", 1, "#1a6fd4", "#0d2540"),
+    ("Clientes",          2, "#8a6aff", "#1a1040"),
+    ("Equipamentos",      3, "#e05a9a", "#2a0a1a"),
+    ("Financeiro",        4, "#2ab87a", "#001a10"),
+    ("Usuarios",          5, "#f0a030", "#2a1a00"),
+    ("Relatorios",        6, "#4a9eff", "#001a3a"),
+]
+
+STATUS_COR = {
+    "aberta":       ("#4a9eff", "Aberta"),
+    "em_andamento": ("#f0a030", "Em Andamento"),
+    "concluida":    ("#2ab87a", "Concluida"),
+    "cancelada":    ("#e05555", "Cancelada"),
+}
 
 
 class JanelaPrincipal(QMainWindow):
@@ -89,11 +113,16 @@ class JanelaPrincipal(QMainWindow):
         super().__init__()
         self.usuario = usuario
         self.setWindowTitle("Orbitask")
-        self.setMinimumSize(1200, 700)
+        self.setMinimumSize(1280, 720)
         self.showMaximized()
         self.setStyleSheet(ESTILO_GLOBAL)
         self._construir_interface()
-        self._atualizar_cards()
+        self._atualizar_dashboard()
+
+        # Timer para o relogio
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._atualizar_relogio)
+        self.timer.start(1000)
 
     def _construir_interface(self):
         widget_central = QWidget()
@@ -111,9 +140,9 @@ class JanelaPrincipal(QMainWindow):
         lc.setSpacing(0)
         lc.addWidget(self._criar_header())
 
-        linha = QFrame()
-        linha.setObjectName("header_line")
-        lc.addWidget(linha)
+        sep = QFrame()
+        sep.setObjectName("header_line")
+        lc.addWidget(sep)
 
         self.stack = QStackedWidget()
 
@@ -148,12 +177,12 @@ class JanelaPrincipal(QMainWindow):
         layout_raiz.addWidget(area, stretch=1)
 
     def _wrapper(self, widget):
-        container = QWidget()
-        container.setObjectName("area_conteudo")
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(32, 28, 32, 28)
-        layout.addWidget(widget)
-        return container
+        c = QWidget()
+        c.setObjectName("area_conteudo")
+        l = QVBoxLayout(c)
+        l.setContentsMargins(32, 28, 32, 28)
+        l.addWidget(widget)
+        return c
 
     def _criar_sidebar(self):
         sidebar = QFrame()
@@ -166,16 +195,17 @@ class JanelaPrincipal(QMainWindow):
         logo = QLabel("Orbitask")
         logo.setObjectName("sidebar_logo")
         layout.addWidget(logo)
+        sub = QLabel("GESTAO DE SERVICOS")
+        sub.setObjectName("sidebar_logo_sub")
+        layout.addWidget(sub)
+        layout.addSpacing(24)
 
-        logo_sub = QLabel("GESTAO DE SERVICOS")
-        logo_sub.setObjectName("sidebar_logo_sub")
-        layout.addWidget(logo_sub)
+        def sep_label(txt):
+            l = QLabel(f"  {txt}")
+            l.setStyleSheet("font-size:10px; color:#0d2a44; font-weight:700; letter-spacing:1.5px; padding:4px 6px; background:transparent;")
+            return l
 
-        layout.addSpacing(28)
-
-        sep1 = QLabel("  MENU PRINCIPAL")
-        sep1.setStyleSheet("font-size:10px; color:#0d2a44; font-weight:700; letter-spacing:1.5px; padding:4px 6px;")
-        layout.addWidget(sep1)
+        layout.addWidget(sep_label("MENU PRINCIPAL"))
         layout.addSpacing(4)
 
         self.botoes_menu = []
@@ -189,10 +219,8 @@ class JanelaPrincipal(QMainWindow):
             layout.addWidget(btn)
             self.botoes_menu.append(btn)
 
-        layout.addSpacing(16)
-        sep2 = QLabel("  ADMINISTRACAO")
-        sep2.setStyleSheet("font-size:10px; color:#0d2a44; font-weight:700; letter-spacing:1.5px; padding:4px 6px;")
-        layout.addWidget(sep2)
+        layout.addSpacing(12)
+        layout.addWidget(sep_label("ADMINISTRACAO"))
         layout.addSpacing(4)
 
         for texto, idx in [("Usuarios",5),("Relatorios",6)]:
@@ -208,9 +236,9 @@ class JanelaPrincipal(QMainWindow):
         self.botoes_menu[0].setChecked(True)
         layout.addStretch()
 
-        frame_u = QFrame()
-        frame_u.setObjectName("frame_usuario")
-        lu = QVBoxLayout(frame_u)
+        fu = QFrame()
+        fu.setObjectName("frame_usuario")
+        lu = QVBoxLayout(fu)
         lu.setContentsMargins(12, 10, 12, 10)
         lu.setSpacing(2)
         ln = QLabel(self.usuario["nome"])
@@ -219,7 +247,7 @@ class JanelaPrincipal(QMainWindow):
         lp = QLabel("Administrador" if self.usuario["perfil"] == "admin" else "Tecnico")
         lp.setObjectName("sidebar_perfil")
         lu.addWidget(lp)
-        layout.addWidget(frame_u)
+        layout.addWidget(fu)
         layout.addSpacing(8)
 
         btn_sair = QPushButton("  Sair do Sistema")
@@ -228,7 +256,6 @@ class JanelaPrincipal(QMainWindow):
         btn_sair.setFixedHeight(40)
         btn_sair.clicked.connect(self._sair)
         layout.addWidget(btn_sair)
-
         return sidebar
 
     def _criar_header(self):
@@ -244,19 +271,23 @@ class JanelaPrincipal(QMainWindow):
 
         layout.addStretch()
 
-        hoje = QDate.currentDate().toString("dddd, dd 'de' MMMM 'de' yyyy")
-        label_data = QLabel(hoje)
-        label_data.setStyleSheet("font-size:12px; color:#1a4a7a;")
-        layout.addWidget(label_data)
+        # Relogio
+        self.label_relogio = QLabel()
+        self.label_relogio.setStyleSheet("font-size:15px; font-weight:700; color:#4a9eff; background:transparent; padding: 4px 12px; border: 1px solid #0a1e34; border-radius:6px;")
+        self._atualizar_relogio()
+        layout.addWidget(self.label_relogio)
 
-        layout.addSpacing(24)
+        layout.addSpacing(16)
 
         nome = self.usuario["nome"].split()[0]
         label_u = QLabel(f"Ola, {nome}")
         label_u.setObjectName("label_usuario")
         layout.addWidget(label_u)
-
         return frame
+
+    def _atualizar_relogio(self):
+        agora = QTime.currentTime().toString("hh:mm:ss")
+        self.label_relogio.setText(agora)
 
     def _criar_pagina_dashboard(self):
         scroll = QScrollArea()
@@ -267,298 +298,254 @@ class JanelaPrincipal(QMainWindow):
         pagina = QWidget()
         pagina.setObjectName("area_conteudo")
         layout = QVBoxLayout(pagina)
-        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setContentsMargins(28, 20, 28, 28)
         layout.setSpacing(16)
 
-        # Secao OS
-        layout.addWidget(self._secao("VISAO GERAL"))
-        linha1 = QHBoxLayout()
-        linha1.setSpacing(12)
-        self.card_abertas      = self._card("Abertas",      "0",        "#4a9eff")
-        self.card_andamento    = self._card("Em Andamento", "0",        "#f0a030")
-        self.card_concluidas   = self._card("Concluidas",   "0",        "#2ab87a")
-        self.card_clientes     = self._card("Clientes",     "0",        "#8a6aff")
-        self.card_equipamentos = self._card("Equipamentos", "0",        "#e05a9a")
-        for c in [self.card_abertas, self.card_andamento, self.card_concluidas,
-                  self.card_clientes, self.card_equipamentos]:
-            linha1.addWidget(c)
-        layout.addLayout(linha1)
+        # --- ATALHOS DE NAVEGACAO (estilo Map-OS) ---
+        grid_atalhos = QGridLayout()
+        grid_atalhos.setSpacing(12)
 
-        # Secao Financeiro
-        layout.addSpacing(4)
-        layout.addWidget(self._secao("FINANCEIRO"))
-        linha2 = QHBoxLayout()
-        linha2.setSpacing(12)
-        self.card_receita_total    = self._card("Receita Total",    "R$ 0,00", "#4a9eff")
-        self.card_receita_recebida = self._card("Receita Recebida", "R$ 0,00", "#2ab87a")
-        self.card_a_receber        = self._card("A Receber",        "R$ 0,00", "#f0a030")
-        self.card_os_pagas         = self._card("OS Pagas",         "0",       "#8a6aff")
-        for c in [self.card_receita_total, self.card_receita_recebida,
-                  self.card_a_receber, self.card_os_pagas]:
-            linha2.addWidget(c)
-        layout.addLayout(linha2)
+        for i, (nome, idx, cor, fundo) in enumerate(ATALHOS):
+            btn = self._btn_atalho(nome, cor, fundo)
+            btn.clicked.connect(lambda _, i=idx: self._navegar(i))
+            grid_atalhos.addWidget(btn, 0, i)
 
-        # Calendario + OS recentes
-        layout.addSpacing(4)
-        layout.addWidget(self._secao("AGENDA E ATIVIDADE RECENTE"))
-        linha3 = QHBoxLayout()
-        linha3.setSpacing(12)
-        linha3.addWidget(self._criar_calendario(), stretch=42)
-        linha3.addWidget(self._criar_recentes(), stretch=58)
-        layout.addLayout(linha3)
+        layout.addLayout(grid_atalhos)
+
+        # --- LINHA CENTRAL: calendario grande + estatisticas ---
+        linha_central = QHBoxLayout()
+        linha_central.setSpacing(14)
+
+        # Calendario grande (lado esquerdo)
+        linha_central.addWidget(self._criar_bloco_calendario(), stretch=62)
+
+        # Estatisticas (lado direito)
+        linha_central.addWidget(self._criar_bloco_estatisticas(), stretch=38)
+
+        layout.addLayout(linha_central)
 
         scroll.setWidget(pagina)
         return scroll
 
-    def _criar_calendario(self):
+    def _btn_atalho(self, nome, cor, fundo):
+        btn = QPushButton(nome)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setFixedHeight(72)
+        btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {fundo};
+                color: {cor};
+                border: 1px solid {cor};
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: 700;
+                padding: 10px;
+                text-align: center;
+            }}
+            QPushButton:hover {{
+                background-color: {cor};
+                color: #ffffff;
+            }}
+        """)
+        return btn
+
+    def _criar_bloco_calendario(self):
         frame = QFrame()
         frame.setObjectName("card_resumo")
-        lc = QVBoxLayout(frame)
-        lc.setContentsMargins(20, 16, 20, 16)
-        lc.setSpacing(10)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(12)
 
-        label_cal = QLabel("CALENDARIO DE PRAZOS")
-        label_cal.setObjectName("card_titulo")
-        lc.addWidget(label_cal)
+        # Header do bloco
+        topo = QHBoxLayout()
+        lbl = QLabel("AGENDA — PRAZOS DAS OS")
+        lbl.setObjectName("card_titulo")
+        topo.addWidget(lbl)
+        topo.addStretch()
 
+        # Legenda
+        for cor, txt in [("#4a9eff","Aberta"),("#f0a030","Em Andamento"),("#e05555","Vencida")]:
+            dot = QLabel()
+            dot.setFixedSize(8,8)
+            dot.setStyleSheet(f"background:{cor}; border-radius:4px; min-width:8px; max-width:8px; min-height:8px; max-height:8px;")
+            tl = QLabel(txt)
+            tl.setStyleSheet("font-size:11px; color:#2a5a8a; background:transparent;")
+            topo.addWidget(dot)
+            topo.addWidget(tl)
+            topo.addSpacing(6)
+
+        layout.addLayout(topo)
+
+        # Calendario grande
         self.calendario = QCalendarWidget()
-        self.calendario.setGridVisible(False)
+        self.calendario.setGridVisible(True)
         self.calendario.setNavigationBarVisible(True)
+        self.calendario.setMinimumHeight(380)
         self.calendario.setStyleSheet("""
             QCalendarWidget { background-color: transparent; color: #c8dff5; border: none; }
             QCalendarWidget QToolButton {
                 background-color: transparent; color: #4a9eff;
-                border: none; font-size: 13px; font-weight: 600; padding: 4px 8px;
+                border: none; font-size: 14px; font-weight: 700; padding: 6px 10px;
             }
-            QCalendarWidget QToolButton:hover { background-color: #0d2540; border-radius: 4px; }
+            QCalendarWidget QToolButton:hover { background-color: #0d2540; border-radius: 5px; }
             QCalendarWidget QMenu { background-color: #0a1828; color: #c8dff5; border: 1px solid #0d2440; }
-            QCalendarWidget QSpinBox {
-                background-color: #0a1828; color: #4a9eff;
-                border: 1px solid #0d2440; border-radius: 4px; padding: 2px 6px;
-            }
+            QCalendarWidget QSpinBox { background-color: #0a1828; color: #4a9eff; border: 1px solid #0d2440; border-radius: 4px; padding: 2px 6px; }
             QCalendarWidget QAbstractItemView {
                 background-color: transparent; color: #c8dff5;
                 selection-background-color: #1a6fd4; selection-color: white;
-                outline: none; gridline-color: #0a1e34;
+                outline: none; font-size: 13px;
             }
             QCalendarWidget QAbstractItemView:disabled { color: #1a3a5a; }
-            QCalendarWidget #qt_calendar_navigationbar {
-                background-color: transparent; border-bottom: 1px solid #0a1e34; padding: 4px;
+            QCalendarWidget #qt_calendar_navigationbar { background-color: #0a1428; border-radius: 8px; padding: 6px; margin-bottom: 6px; }
+            QCalendarWidget #qt_calendar_prevmonth, QCalendarWidget #qt_calendar_nextmonth {
+                color: #4a9eff; qproperty-icon: none; font-size: 18px; font-weight: bold; padding: 2px 10px;
             }
-            QCalendarWidget #qt_calendar_prevmonth,
-            QCalendarWidget #qt_calendar_nextmonth {
-                color: #4a9eff; qproperty-icon: none;
-                font-size: 16px; font-weight: bold; padding: 2px 8px;
-            }
+            QCalendarWidget QWidget { alternate-background-color: #0a1428; }
         """)
-
-        # Reconecta sinal para atualizar destaque quando mudar mes
         self.calendario.currentPageChanged.connect(self._destacar_prazos)
-        lc.addWidget(self.calendario)
-
-        # Legenda
-        leg = QHBoxLayout()
-        leg.setSpacing(16)
-        for cor, txt in [("#4a9eff", "OS Aberta"), ("#f0a030", "Em Andamento"), ("#e05555", "Vencida")]:
-            dot = QLabel()
-            dot.setFixedSize(8, 8)
-            dot.setStyleSheet(f"background-color:{cor}; border-radius:4px; min-width:8px; max-width:8px; min-height:8px; max-height:8px;")
-            tl = QLabel(txt)
-            tl.setStyleSheet("font-size:11px; color:#2a5a8a;")
-            leg.addWidget(dot)
-            leg.addWidget(tl)
-        leg.addStretch()
-        lc.addLayout(leg)
-
+        layout.addWidget(self.calendario)
         return frame
 
-    def _criar_recentes(self):
+    def _criar_bloco_estatisticas(self):
         frame = QFrame()
         frame.setObjectName("card_resumo")
-        lr = QVBoxLayout(frame)
-        lr.setContentsMargins(20, 16, 20, 16)
-        lr.setSpacing(10)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(10)
 
-        label_rec = QLabel("ULTIMAS ORDENS DE SERVICO")
-        label_rec.setObjectName("card_titulo")
-        lr.addWidget(label_rec)
+        lbl = QLabel("ESTATISTICAS DO SISTEMA")
+        lbl.setObjectName("card_titulo")
+        layout.addWidget(lbl)
 
-        self.lista_recentes = QVBoxLayout()
-        self.lista_recentes.setSpacing(6)
-        lr.addLayout(self.lista_recentes)
-        lr.addStretch()
+        # Grid 2x2 de stats
+        grid = QGridLayout()
+        grid.setSpacing(10)
 
+        self.stat_abertas    = self._stat_card("OS Abertas",    "0", "#4a9eff")
+        self.stat_andamento  = self._stat_card("Em Andamento",  "0", "#f0a030")
+        self.stat_concluidas = self._stat_card("Concluidas",    "0", "#2ab87a")
+        self.stat_clientes   = self._stat_card("Clientes",      "0", "#8a6aff")
+        self.stat_equipamentos = self._stat_card("Equipamentos","0", "#e05a9a")
+        self.stat_os_pagas   = self._stat_card("OS Pagas",      "0", "#4a9eff")
+
+        for i, card in enumerate([self.stat_abertas, self.stat_andamento,
+                                   self.stat_concluidas, self.stat_clientes,
+                                   self.stat_equipamentos, self.stat_os_pagas]):
+            grid.addWidget(card, i // 2, i % 2)
+
+        layout.addLayout(grid)
+        layout.addSpacing(8)
+
+        # Financeiro
+        sep = QFrame()
+        sep.setStyleSheet("background-color: #0a1e34; max-height: 1px; min-height: 1px;")
+        layout.addWidget(sep)
+
+        lbl_fin = QLabel("FINANCEIRO")
+        lbl_fin.setObjectName("card_titulo")
+        layout.addWidget(lbl_fin)
+
+        self.stat_receita_total    = self._stat_card_largo("Receita Total",    "R$ 0,00", "#4a9eff")
+        self.stat_receita_recebida = self._stat_card_largo("Receita Recebida", "R$ 0,00", "#2ab87a")
+        self.stat_a_receber        = self._stat_card_largo("A Receber",        "R$ 0,00", "#f0a030")
+
+        layout.addWidget(self.stat_receita_total)
+        layout.addWidget(self.stat_receita_recebida)
+        layout.addWidget(self.stat_a_receber)
+        layout.addStretch()
         return frame
 
-    def _secao(self, texto):
-        label = QLabel(texto)
-        label.setStyleSheet("font-size:11px; font-weight:700; color:#1a4a7a; letter-spacing:1.5px;")
-        return label
-
-    def _card(self, titulo, valor, cor):
-        card = QFrame()
-        card.setObjectName("card_resumo")
-        card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        card.setMinimumHeight(95)
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(20, 14, 20, 14)
-        layout.setSpacing(5)
-
-        topo = QHBoxLayout()
-        dot = QLabel()
-        dot.setFixedSize(8, 8)
-        dot.setStyleSheet(f"background-color:{cor}; border-radius:4px; min-width:8px; max-width:8px; min-height:8px; max-height:8px;")
-        topo.addWidget(dot)
-        topo.addStretch()
-        layout.addLayout(topo)
+    def _stat_card(self, titulo, valor, cor):
+        frame = QFrame()
+        frame.setStyleSheet(f"QFrame {{ background-color: #0a1428; border-radius: 8px; border: 1px solid #0a1e34; }} QFrame:hover {{ border-color: {cor}; }}")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(2)
 
         lv = QLabel(valor)
-        lv.setStyleSheet(f"color:{cor}; font-size:24px; font-weight:700;")
+        lv.setStyleSheet(f"color:{cor}; font-size:22px; font-weight:700; background:transparent;")
         layout.addWidget(lv)
 
-        lt = QLabel(titulo.upper())
-        lt.setObjectName("card_titulo")
+        lt = QLabel(titulo)
+        lt.setStyleSheet("font-size:11px; color:#2a5a8a; background:transparent;")
         layout.addWidget(lt)
 
-        card._label_valor = lv
-        return card
+        frame._lv = lv
+        return frame
+
+    def _stat_card_largo(self, titulo, valor, cor):
+        frame = QFrame()
+        frame.setStyleSheet("QFrame { background-color: #0a1428; border-radius: 8px; border: 1px solid #0a1e34; }")
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(14, 10, 14, 10)
+
+        dot = QLabel()
+        dot.setFixedSize(8,8)
+        dot.setStyleSheet(f"background:{cor}; border-radius:4px; min-width:8px; max-width:8px; min-height:8px; max-height:8px;")
+        layout.addWidget(dot)
+        layout.addSpacing(8)
+
+        lt = QLabel(titulo)
+        lt.setStyleSheet("font-size:12px; color:#2a5a8a; background:transparent;")
+        layout.addWidget(lt)
+        layout.addStretch()
+
+        lv = QLabel(valor)
+        lv.setStyleSheet(f"color:{cor}; font-size:14px; font-weight:700; background:transparent;")
+        layout.addWidget(lv)
+
+        frame._lv = lv
+        return frame
 
     def _destacar_prazos(self):
-        """Marca os dias com OS pendentes no calendario com cores."""
-        # Limpa formatos anteriores
         fmt_padrao = QTextCharFormat()
         self.calendario.setDateTextFormat(QDate(), fmt_padrao)
 
         hoje = QDate.currentDate()
-        prazos = listar_prazos()
-
-        for p in prazos:
+        for p in listar_prazos():
             if not p.get("prazo"):
                 continue
             try:
-                partes = p["prazo"].split("-")
-                data = QDate(int(partes[0]), int(partes[1]), int(partes[2]))
+                pts = p["prazo"].split("-")
+                data = QDate(int(pts[0]), int(pts[1]), int(pts[2]))
             except Exception:
                 continue
 
             fmt = QTextCharFormat()
             fmt.setFontWeight(QFont.Weight.Bold)
-
             if data < hoje:
-                # Vencida
                 fmt.setBackground(QColor("#3a0808"))
                 fmt.setForeground(QColor("#e05555"))
             elif p["status"] == "em_andamento":
-                # Em andamento
                 fmt.setBackground(QColor("#2a1a00"))
                 fmt.setForeground(QColor("#f0a030"))
             else:
-                # Aberta
                 fmt.setBackground(QColor("#001a3a"))
                 fmt.setForeground(QColor("#4a9eff"))
-
             self.calendario.setDateTextFormat(data, fmt)
 
-        # Destaca hoje sempre
         fmt_hoje = QTextCharFormat()
         fmt_hoje.setFontWeight(QFont.Weight.Bold)
         fmt_hoje.setForeground(QColor("#ffffff"))
         fmt_hoje.setBackground(QColor("#1a6fd4"))
         self.calendario.setDateTextFormat(hoje, fmt_hoje)
 
-    def _atualizar_cards(self):
+    def _atualizar_dashboard(self):
         contagens = contar_por_status()
-        self.card_abertas._label_valor.setText(str(contagens.get("aberta", 0)))
-        self.card_andamento._label_valor.setText(str(contagens.get("em_andamento", 0)))
-        self.card_concluidas._label_valor.setText(str(contagens.get("concluida", 0)))
-        self.card_clientes._label_valor.setText(str(contar_clientes()))
-        self.card_equipamentos._label_valor.setText(str(contar_equipamentos()))
+        self.stat_abertas._lv.setText(str(contagens.get("aberta", 0)))
+        self.stat_andamento._lv.setText(str(contagens.get("em_andamento", 0)))
+        self.stat_concluidas._lv.setText(str(contagens.get("concluida", 0)))
+        self.stat_clientes._lv.setText(str(contar_clientes()))
+        self.stat_equipamentos._lv.setText(str(contar_equipamentos()))
 
         res = resumo_financeiro()
-        self.card_receita_total._label_valor.setText(fmt_brl(res.get("receita_total", 0)))
-        self.card_receita_recebida._label_valor.setText(fmt_brl(res.get("receita_recebida", 0)))
-        self.card_a_receber._label_valor.setText(fmt_brl(res.get("receita_pendente", 0)))
-        self.card_os_pagas._label_valor.setText(str(res.get("os_pagas", 0)))
+        self.stat_os_pagas._lv.setText(str(res.get("os_pagas", 0)))
+        self.stat_receita_total._lv.setText(fmt_brl(res.get("receita_total", 0)))
+        self.stat_receita_recebida._lv.setText(fmt_brl(res.get("receita_recebida", 0)))
+        self.stat_a_receber._lv.setText(fmt_brl(res.get("receita_pendente", 0)))
 
         self._destacar_prazos()
-        self._atualizar_recentes()
-
-    def _atualizar_recentes(self):
-        while self.lista_recentes.count():
-            item = self.lista_recentes.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
-        from app.models.ordem_servico import listar_ordens
-        ordens = listar_ordens()[:7]
-
-        STATUS_COR = {
-            "aberta":       ("#4a9eff", "Aberta"),
-            "em_andamento": ("#f0a030", "Em Andamento"),
-            "concluida":    ("#2ab87a", "Concluida"),
-            "cancelada":    ("#e05555", "Cancelada"),
-        }
-
-        for o in ordens:
-            item = QFrame()
-            item.setStyleSheet("""
-                QFrame { background-color: #0a1428; border-radius: 6px; border: 1px solid #0a1e34; }
-                QFrame:hover { border-color: #1a4a7a; background-color: #0d1e38; }
-            """)
-            li = QHBoxLayout(item)
-            li.setContentsMargins(12, 8, 12, 8)
-            li.setSpacing(10)
-
-            cor, txt_status = STATUS_COR.get(o["status"], ("#fff", o["status"]))
-
-            dot = QLabel()
-            dot.setFixedSize(8, 8)
-            dot.setStyleSheet(f"background-color:{cor}; border-radius:4px; min-width:8px; max-width:8px; min-height:8px; max-height:8px;")
-            li.addWidget(dot)
-
-            col = QVBoxLayout()
-            col.setSpacing(1)
-            titulo = QLabel(f"#{o['id']} — {o['titulo'][:40]}")
-            titulo.setStyleSheet("font-size:12px; color:#c8dff5; font-weight:500;")
-            col.addWidget(titulo)
-
-            cliente = QLabel(o.get("cliente_nome") or "Sem cliente")
-            cliente.setStyleSheet("font-size:11px; color:#2a5a8a;")
-            col.addWidget(cliente)
-            li.addLayout(col, stretch=1)
-
-            col_dir = QVBoxLayout()
-            col_dir.setSpacing(1)
-            col_dir.setAlignment(Qt.AlignmentFlag.AlignRight)
-
-            status = QLabel(txt_status)
-            status.setStyleSheet(f"font-size:11px; color:{cor}; font-weight:600;")
-            status.setAlignment(Qt.AlignmentFlag.AlignRight)
-            col_dir.addWidget(status)
-
-            prazo = o.get("prazo")
-            if prazo:
-                try:
-                    partes = prazo.split("-")
-                    data_fmt = f"{partes[2]}/{partes[1]}/{partes[0]}"
-                    hoje = QDate.currentDate()
-                    data_q = QDate(int(partes[0]), int(partes[1]), int(partes[2]))
-                    cor_prazo = "#e05555" if data_q < hoje else "#2a5a8a"
-                    label_prazo = QLabel(f"Prazo: {data_fmt}")
-                    label_prazo.setStyleSheet(f"font-size:10px; color:{cor_prazo};")
-                    label_prazo.setAlignment(Qt.AlignmentFlag.AlignRight)
-                    col_dir.addWidget(label_prazo)
-                except Exception:
-                    pass
-
-            li.addLayout(col_dir)
-            self.lista_recentes.addWidget(item)
-
-        if not ordens:
-            vazio = QLabel("Nenhuma ordem cadastrada ainda.")
-            vazio.setObjectName("placeholder")
-            vazio.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.lista_recentes.addWidget(vazio)
 
     def _navegar(self, indice: int):
         titulos = ["Dashboard", "Ordens de Servico", "Clientes",
@@ -568,7 +555,7 @@ class JanelaPrincipal(QMainWindow):
         self.label_titulo_pagina.setText(titulos[indice])
         self.stack.setCurrentIndex(indice)
 
-        if indice == 0:   self._atualizar_cards()
+        if indice == 0:   self._atualizar_dashboard()
         elif indice == 1: self.pagina_ordens._aplicar_filtros()
         elif indice == 2: self.pagina_clientes._carregar_clientes()
         elif indice == 3: self.pagina_equipamentos._carregar_equipamentos()
@@ -576,6 +563,7 @@ class JanelaPrincipal(QMainWindow):
         elif indice == 5: self.pagina_usuarios._carregar_usuarios()
 
     def _sair(self):
+        self.timer.stop()
         from app.views.tela_login import TelaLogin
         self.tela_login = TelaLogin()
         self.tela_login.login_sucesso.connect(self._reabrir_principal)

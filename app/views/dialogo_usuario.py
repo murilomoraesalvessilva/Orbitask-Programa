@@ -7,139 +7,204 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from app.models.usuario import criar_usuario, atualizar_usuario, trocar_senha
 
-PERFIS = [
-    ("admin",   "Administrador"),
-    ("tecnico", "Tecnico"),
-]
+ESTILO = """
+    QDialog, QWidget {
+        background-color: #08121e;
+        color: #c8dff5;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    QLabel {
+        background-color: transparent;
+        color: #c8dff5;
+        font-size: 13px;
+    }
+    QLabel#campo_label {
+        background-color: transparent;
+        color: #2a5a8a;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+    }
+    QLabel#titulo {
+        background-color: transparent;
+        color: #ffffff;
+        font-size: 17px;
+        font-weight: 700;
+    }
+    QLineEdit {
+        background-color: #0d1e30;
+        border: 1px solid #0d2e4e;
+        border-radius: 6px;
+        padding: 9px 12px;
+        font-size: 13px;
+        color: #c8dff5;
+    }
+    QLineEdit:focus { border: 1px solid #1a6fd4; }
+    QComboBox {
+        background-color: #0d1e30;
+        border: 1px solid #0d2e4e;
+        border-radius: 6px;
+        padding: 9px 12px;
+        font-size: 13px;
+        color: #c8dff5;
+    }
+    QComboBox::drop-down { border: none; }
+    QComboBox QAbstractItemView {
+        background-color: #0a1828;
+        color: #c8dff5;
+        selection-background-color: #1a6fd4;
+        outline: none;
+    }
+    QTabWidget::pane {
+        border: 1px solid #0a1e34;
+        border-radius: 8px;
+        background-color: #08121e;
+    }
+    QTabBar::tab {
+        background-color: #080f1e;
+        color: #2a5a8a;
+        padding: 9px 22px;
+        border: none;
+        font-size: 13px;
+    }
+    QTabBar::tab:selected {
+        background-color: #0d2540;
+        color: #4a9eff;
+        font-weight: 600;
+        border-bottom: 2px solid #1a6fd4;
+    }
+    QPushButton#btn_primario {
+        background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #1a6fd4,stop:1 #0d4fa0);
+        color: white; border: none; border-radius: 6px;
+        padding: 10px 20px; font-size: 13px; font-weight: 600;
+    }
+    QPushButton#btn_primario:hover {
+        background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #2a7fe4,stop:1 #1a5fc0);
+    }
+    QPushButton#btn_secundario {
+        background-color: #0a1828; color: #3a6a9a;
+        border: 1px solid #0d2440; border-radius: 6px; padding: 10px 20px; font-size: 13px;
+    }
+    QPushButton#btn_secundario:hover { background-color: #0d2040; color: #c8dff5; }
+"""
+
+PERFIS = [("admin", "Administrador"), ("tecnico", "Tecnico")]
 
 
 class DialogoUsuario(QDialog):
-    """Dialogo para criar ou editar um usuario."""
-
     def __init__(self, parent=None, usuario: dict = None, usuario_logado: dict = None):
         super().__init__(parent)
         self.usuario = usuario
         self.usuario_logado = usuario_logado or {}
         self.editando = usuario is not None
-
-        titulo = "Editar Usuario" if self.editando else "Novo Usuario"
-        self.setWindowTitle(titulo)
-        self.setFixedSize(460, 420 if not self.editando else 480)
-        self.setStyleSheet(self._estilos())
-        self._construir_interface()
-
+        self.setWindowTitle("Editar Usuario" if self.editando else "Novo Usuario")
+        self.setFixedSize(460, 480 if self.editando else 440)
+        self.setStyleSheet(ESTILO)
+        self._construir()
         if self.editando:
-            self._preencher_campos()
+            self._preencher()
 
-    def _construir_interface(self):
+    def _construir(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 32, 32, 32)
-        layout.setSpacing(14)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(0)
 
-        titulo = "Editar Usuario" if self.editando else "Novo Usuario"
-        label_titulo = QLabel(titulo)
-        label_titulo.setObjectName("titulo")
-        layout.addWidget(label_titulo)
-
-        layout.addSpacing(4)
+        titulo = QLabel("Editar Usuario" if self.editando else "Novo Usuario")
+        titulo.setObjectName("titulo")
+        layout.addWidget(titulo)
+        layout.addSpacing(20)
 
         if self.editando:
             tabs = QTabWidget()
             tabs.setObjectName("tabs")
 
-            # Aba de dados
             aba_dados = QWidget()
-            layout_dados = QVBoxLayout(aba_dados)
-            layout_dados.setContentsMargins(0, 16, 0, 0)
-            layout_dados.setSpacing(12)
-            self._campos_dados(layout_dados)
+            ld = QVBoxLayout(aba_dados)
+            ld.setContentsMargins(0, 16, 0, 0)
+            ld.setSpacing(0)
+            self._campos_dados(ld)
             tabs.addTab(aba_dados, "Dados")
 
-            # Aba de senha
             aba_senha = QWidget()
-            layout_senha = QVBoxLayout(aba_senha)
-            layout_senha.setContentsMargins(0, 16, 0, 0)
-            layout_senha.setSpacing(12)
-            self._campos_senha(layout_senha)
+            ls = QVBoxLayout(aba_senha)
+            ls.setContentsMargins(0, 16, 0, 0)
+            ls.setSpacing(0)
+            self._campos_senha(ls)
             tabs.addTab(aba_senha, "Trocar Senha")
 
             layout.addWidget(tabs)
             self.tabs = tabs
         else:
             self._campos_dados(layout)
-            layout.addSpacing(4)
+            layout.addSpacing(12)
             self._campo_senha_novo(layout)
 
-        layout.addStretch()
+        layout.addSpacing(20)
 
-        layout_botoes = QHBoxLayout()
-        layout_botoes.setSpacing(12)
+        bts = QHBoxLayout()
+        bts.setSpacing(12)
+        btn_c = QPushButton("Cancelar")
+        btn_c.setObjectName("btn_secundario")
+        btn_c.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_c.clicked.connect(self.reject)
+        bts.addWidget(btn_c)
 
-        btn_cancelar = QPushButton("Cancelar")
-        btn_cancelar.setObjectName("btn_secundario")
-        btn_cancelar.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_cancelar.clicked.connect(self.reject)
-        layout_botoes.addWidget(btn_cancelar)
+        btn_s = QPushButton("Salvar" if self.editando else "Cadastrar")
+        btn_s.setObjectName("btn_primario")
+        btn_s.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_s.clicked.connect(self._salvar)
+        bts.addWidget(btn_s)
+        layout.addLayout(bts)
 
-        texto = "Salvar" if self.editando else "Cadastrar"
-        btn_salvar = QPushButton(texto)
-        btn_salvar.setObjectName("btn_primario")
-        btn_salvar.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_salvar.clicked.connect(self._salvar)
-        layout_botoes.addWidget(btn_salvar)
-
-        layout.addLayout(layout_botoes)
+    def _campo(self, layout, label_txt, placeholder, senha=False):
+        lbl = QLabel(label_txt)
+        lbl.setObjectName("campo_label")
+        layout.addWidget(lbl)
+        layout.addSpacing(4)
+        campo = QLineEdit()
+        campo.setPlaceholderText(placeholder)
+        if senha:
+            campo.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(campo)
+        layout.addSpacing(12)
+        return campo
 
     def _campos_dados(self, layout):
-        self.campo_nome = self._campo(layout, "Nome *", "Nome completo")
-        self.campo_email = self._campo(layout, "E-mail *", "usuario@email.com")
+        self.campo_nome  = self._campo(layout, "NOME *",   "Nome completo")
+        self.campo_email = self._campo(layout, "E-MAIL *", "usuario@email.com")
 
-        label_perfil = QLabel("Perfil *")
-        label_perfil.setObjectName("label_campo")
-        layout.addWidget(label_perfil)
-
+        lbl = QLabel("PERFIL *")
+        lbl.setObjectName("campo_label")
+        layout.addWidget(lbl)
+        layout.addSpacing(4)
         self.combo_perfil = QComboBox()
-        self.combo_perfil.setObjectName("combo")
         for _, label in PERFIS:
             self.combo_perfil.addItem(label)
         layout.addWidget(self.combo_perfil)
 
     def _campo_senha_novo(self, layout):
-        self.campo_senha = self._campo(layout, "Senha *", "Minimo 6 caracteres", senha=True)
-        self.campo_confirmar = self._campo(layout, "Confirmar Senha *", "Repita a senha", senha=True)
+        self.campo_senha     = self._campo(layout, "SENHA *",            "Minimo 6 caracteres", senha=True)
+        self.campo_confirmar = self._campo(layout, "CONFIRMAR SENHA *",  "Repita a senha",       senha=True)
 
     def _campos_senha(self, layout):
-        self.campo_senha_atual = self._campo(layout, "Senha Atual", "", senha=True)
-        self.campo_nova_senha = self._campo(layout, "Nova Senha", "Minimo 6 caracteres", senha=True)
-        self.campo_conf_senha = self._campo(layout, "Confirmar Nova Senha", "", senha=True)
+        self.campo_senha_atual = self._campo(layout, "SENHA ATUAL",        "",                     senha=True)
+        self.campo_nova_senha  = self._campo(layout, "NOVA SENHA",         "Minimo 6 caracteres",  senha=True)
+        self.campo_conf_senha  = self._campo(layout, "CONFIRMAR NOVA SENHA","",                    senha=True)
 
-    def _campo(self, layout, label_texto, placeholder, senha=False):
-        label = QLabel(label_texto)
-        label.setObjectName("label_campo")
-        layout.addWidget(label)
-        campo = QLineEdit()
-        campo.setPlaceholderText(placeholder)
-        campo.setObjectName("campo")
-        if senha:
-            campo.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(campo)
-        return campo
-
-    def _preencher_campos(self):
+    def _preencher(self):
         self.campo_nome.setText(self.usuario.get("nome", ""))
         self.campo_email.setText(self.usuario.get("email", ""))
-        perfil_valores = [k for k, _ in PERFIS]
-        perfil_atual = self.usuario.get("perfil", "tecnico")
-        if perfil_atual in perfil_valores:
-            self.combo_perfil.setCurrentIndex(perfil_valores.index(perfil_atual))
+        perfil_vals = [k for k, _ in PERFIS]
+        perfil = self.usuario.get("perfil", "tecnico")
+        if perfil in perfil_vals:
+            self.combo_perfil.setCurrentIndex(perfil_vals.index(perfil))
 
     def _salvar(self):
-        # Verifica qual aba esta ativa (se editando)
         if self.editando and self.tabs.currentIndex() == 1:
             self._salvar_senha()
             return
 
-        nome = self.campo_nome.text().strip()
+        nome  = self.campo_nome.text().strip()
         email = self.campo_email.text().strip()
         perfil = PERFIS[self.combo_perfil.currentIndex()][0]
 
@@ -153,11 +218,10 @@ class DialogoUsuario(QDialog):
                 QMessageBox.warning(self, "Erro", erro)
                 return
         else:
-            senha = self.campo_senha.text()
+            senha    = self.campo_senha.text()
             confirmar = self.campo_confirmar.text()
-
             if not senha:
-                QMessageBox.warning(self, "Campos obrigatorios", "A senha e obrigatoria.")
+                QMessageBox.warning(self, "Campo obrigatorio", "A senha e obrigatoria.")
                 return
             if len(senha) < 6:
                 QMessageBox.warning(self, "Senha fraca", "A senha deve ter pelo menos 6 caracteres.")
@@ -165,19 +229,16 @@ class DialogoUsuario(QDialog):
             if senha != confirmar:
                 QMessageBox.warning(self, "Senhas diferentes", "As senhas nao coincidem.")
                 return
-
             novo_id, erro = criar_usuario(nome, email, senha, perfil)
             if erro:
                 QMessageBox.warning(self, "Erro", erro)
                 return
-
         self.accept()
 
     def _salvar_senha(self):
         atual = self.campo_senha_atual.text()
-        nova = self.campo_nova_senha.text()
-        conf = self.campo_conf_senha.text()
-
+        nova  = self.campo_nova_senha.text()
+        conf  = self.campo_conf_senha.text()
         if not atual or not nova:
             QMessageBox.warning(self, "Campos obrigatorios", "Preencha todos os campos de senha.")
             return
@@ -187,89 +248,9 @@ class DialogoUsuario(QDialog):
         if nova != conf:
             QMessageBox.warning(self, "Senhas diferentes", "As novas senhas nao coincidem.")
             return
-
         ok, erro = trocar_senha(self.usuario["id"], atual, nova)
         if not ok:
             QMessageBox.warning(self, "Erro", erro)
             return
-
         QMessageBox.information(self, "Sucesso", "Senha alterada com sucesso!")
         self.accept()
-
-    def _estilos(self):
-        return """
-            QDialog {
-                background-color: #1a1d27;
-                color: #e0e0e0;
-                font-family: 'Segoe UI', sans-serif;
-            }
-            QLabel#titulo {
-                font-size: 18px;
-                font-weight: bold;
-                color: #f0f0f0;
-            }
-            QLabel#label_campo {
-                font-size: 12px;
-                color: #9ca3af;
-                font-weight: bold;
-            }
-            QLineEdit#campo {
-                background-color: #252836;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 9px 12px;
-                font-size: 13px;
-                color: #e0e0e0;
-            }
-            QLineEdit#campo:focus { border: 1px solid #7c6af7; }
-            QComboBox#combo {
-                background-color: #252836;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 9px 12px;
-                font-size: 13px;
-                color: #e0e0e0;
-            }
-            QComboBox#combo::drop-down { border: none; }
-            QComboBox#combo QAbstractItemView {
-                background-color: #252836;
-                color: #e0e0e0;
-                selection-background-color: #7c6af7;
-            }
-            QTabWidget#tabs::pane {
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                background-color: #1a1d27;
-            }
-            QTabBar::tab {
-                background-color: #252836;
-                color: #9ca3af;
-                padding: 8px 20px;
-                border: none;
-                font-size: 13px;
-            }
-            QTabBar::tab:selected {
-                background-color: #2d2b55;
-                color: #7c6af7;
-                font-weight: bold;
-            }
-            QPushButton#btn_primario {
-                background-color: #7c6af7;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-size: 13px;
-                font-weight: bold;
-            }
-            QPushButton#btn_primario:hover { background-color: #6a58e0; }
-            QPushButton#btn_secundario {
-                background-color: #252836;
-                color: #9ca3af;
-                border: 1px solid #2e3347;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-size: 13px;
-            }
-            QPushButton#btn_secundario:hover { background-color: #2e3347; color: #e0e0e0; }
-        """
