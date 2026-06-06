@@ -10,6 +10,7 @@ from app.models.cliente import contar_clientes
 from app.models.ordem_servico import contar_por_status, listar_prazos, listar_ordens
 from app.models.equipamento import contar_equipamentos
 from app.models.financeiro import resumo_financeiro
+from app.views.logo_widget import LogoWidget
 
 
 def fmt_brl(v):
@@ -192,12 +193,23 @@ class JanelaPrincipal(QMainWindow):
         layout.setContentsMargins(12, 24, 12, 20)
         layout.setSpacing(2)
 
-        logo = QLabel("Orbitask")
-        logo.setObjectName("sidebar_logo")
-        layout.addWidget(logo)
-        sub = QLabel("GESTAO DE SERVICOS")
-        sub.setObjectName("sidebar_logo_sub")
-        layout.addWidget(sub)
+        # Logo + nome na sidebar
+        logo_row = QHBoxLayout()
+        logo_row.setContentsMargins(0, 0, 0, 0)
+        logo_row.setSpacing(10)
+        logo_icon = LogoWidget(size=36)
+        logo_row.addWidget(logo_icon)
+        col_logo = QVBoxLayout()
+        col_logo.setSpacing(0)
+        logo_nome = QLabel("Orbitask")
+        logo_nome.setObjectName("sidebar_logo")
+        col_logo.addWidget(logo_nome)
+        logo_sub_lbl = QLabel("GESTAO DE SERVICOS")
+        logo_sub_lbl.setObjectName("sidebar_logo_sub")
+        col_logo.addWidget(logo_sub_lbl)
+        logo_row.addLayout(col_logo)
+        logo_row.addStretch()
+        layout.addLayout(logo_row)
         layout.addSpacing(24)
 
         def sep_label(txt):
@@ -265,6 +277,10 @@ class JanelaPrincipal(QMainWindow):
         layout = QHBoxLayout(frame)
         layout.setContentsMargins(32, 0, 32, 0)
 
+        # Logo pequena + titulo no header
+        header_logo = LogoWidget(size=30)
+        layout.addWidget(header_logo)
+        layout.addSpacing(8)
         self.label_titulo_pagina = QLabel("Dashboard")
         self.label_titulo_pagina.setObjectName("titulo_pagina")
         layout.addWidget(self.label_titulo_pagina)

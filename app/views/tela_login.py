@@ -4,28 +4,9 @@ from PyQt6.QtWidgets import (
     QLineEdit, QPushButton, QMessageBox, QSizePolicy
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QTime
-from PyQt6.QtGui import QPainter, QColor, QPen, QBrush, QFont
-from PyQt6.QtSvgWidgets import QSvgWidget
-from PyQt6.QtCore import QByteArray
-from app.controllers.auth_controller import fazer_login
 
-LOGO_SVG = b"""
-<svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
-  <ellipse cx="110" cy="110" rx="98" ry="98" fill="none" stroke="#1a6fd4" stroke-width="1.5" opacity="0.3"/>
-  <ellipse cx="110" cy="110" rx="98" ry="38" fill="none" stroke="#1a6fd4" stroke-width="2" opacity="0.8" transform="rotate(-30 110 110)"/>
-  <ellipse cx="110" cy="110" rx="55" ry="55" fill="none" stroke="#4a9eff" stroke-width="1" opacity="0.25"/>
-  <circle cx="110" cy="110" r="30" fill="#0d2540"/>
-  <circle cx="110" cy="110" r="30" fill="none" stroke="#1a6fd4" stroke-width="2"/>
-  <circle cx="110" cy="110" r="20" fill="#1a6fd4" opacity="0.95"/>
-  <circle cx="100" cy="102" r="6" fill="#4a9eff" opacity="0.5"/>
-  <circle cx="191" cy="72" r="9" fill="#4a9eff"/>
-  <circle cx="191" cy="72" r="5" fill="#ffffff" opacity="0.9"/>
-  <circle cx="30" cy="145" r="6" fill="#2ab87a"/>
-  <circle cx="30" cy="145" r="3" fill="#ffffff" opacity="0.8"/>
-  <circle cx="110" cy="12" r="4" fill="#4a9eff" opacity="0.4"/>
-  <circle cx="208" cy="110" r="3" fill="#8a6aff" opacity="0.5"/>
-</svg>
-"""
+from app.controllers.auth_controller import fazer_login
+from app.views.logo_widget import LogoWidget
 
 
 class TelaLogin(QWidget):
@@ -56,16 +37,11 @@ class TelaLogin(QWidget):
         le.setContentsMargins(64, 56, 64, 40)
         le.setSpacing(0)
 
-        # Logo SVG
-        logo_svg = QSvgWidget()
-        logo_svg.load(QByteArray(LOGO_SVG))
-        logo_svg.setFixedSize(160, 160)
-        logo_svg.setStyleSheet("background: transparent;")
-        le.addWidget(logo_svg)
-
+        # Logo grande
+        logo = LogoWidget(size=150)
+        le.addWidget(logo)
         le.addSpacing(20)
 
-        # Nome do sistema
         label_nome = QLabel("Orbitask")
         label_nome.setObjectName("marca")
         le.addWidget(label_nome)
@@ -76,22 +52,20 @@ class TelaLogin(QWidget):
         label_slogan.setObjectName("slogan")
         le.addWidget(label_slogan)
 
-        le.addSpacing(48)
+        le.addSpacing(40)
 
-        # Linha separadora
         sep = QWidget()
         sep.setFixedHeight(1)
         sep.setStyleSheet("background-color: #0d2440;")
         le.addWidget(sep)
 
-        le.addSpacing(32)
+        le.addSpacing(28)
 
-        # Bullets de funcionalidades
         bullets = [
-            ("Ordens de Servico",   "Controle completo do ciclo de atendimento"),
-            ("Financeiro Integrado","Receitas, pagamentos e relatorios em PDF"),
-            ("Calendario de Prazos","Visualize prazos e compromissos em tempo real"),
-            ("Multi-usuario",       "Perfis de Admin e Tecnico com permissoes"),
+            ("Ordens de Servico",    "Controle completo do ciclo de atendimento"),
+            ("Financeiro Integrado", "Receitas, pagamentos e relatorios em PDF"),
+            ("Calendario de Prazos", "Visualize prazos e compromissos em tempo real"),
+            ("Multi-usuario",        "Perfis de Admin e Tecnico com permissoes"),
         ]
         for titulo, desc in bullets:
             linha = QWidget()
@@ -117,17 +91,15 @@ class TelaLogin(QWidget):
             ll.addLayout(col)
 
             le.addWidget(linha)
-            le.addSpacing(16)
+            le.addSpacing(14)
 
         le.addStretch()
 
-        # Relogio no rodape
         self.label_relogio = QLabel()
         self.label_relogio.setObjectName("relogio")
         le.addWidget(self.label_relogio)
 
-        le.addSpacing(8)
-
+        le.addSpacing(6)
         label_versao = QLabel("Orbitask v1.0 — Uso Interno")
         label_versao.setObjectName("versao")
         le.addWidget(label_versao)
@@ -149,13 +121,9 @@ class TelaLogin(QWidget):
 
         ld.addStretch()
 
-        # Logo pequena no formulario
-        logo_pequena = QSvgWidget()
-        logo_pequena.load(QByteArray(LOGO_SVG))
-        logo_pequena.setFixedSize(64, 64)
-        logo_pequena.setStyleSheet("background: transparent;")
+        # Logo pequena no painel do formulario
+        logo_pequena = LogoWidget(size=72)
         ld.addWidget(logo_pequena)
-
         ld.addSpacing(16)
 
         label_bv = QLabel("Bem-vindo de volta")
@@ -168,7 +136,6 @@ class TelaLogin(QWidget):
 
         ld.addSpacing(40)
 
-        # Campo e-mail
         lbl_email = QLabel("E-MAIL")
         lbl_email.setObjectName("campo_label")
         ld.addWidget(lbl_email)
@@ -181,7 +148,6 @@ class TelaLogin(QWidget):
 
         ld.addSpacing(20)
 
-        # Campo senha
         lbl_senha = QLabel("SENHA")
         lbl_senha.setObjectName("campo_label")
         ld.addWidget(lbl_senha)
@@ -203,7 +169,7 @@ class TelaLogin(QWidget):
         self.btn_entrar.clicked.connect(self._tentar_login)
         ld.addWidget(self.btn_entrar)
 
-        ld.addSpacing(24)
+        ld.addSpacing(20)
 
         label_dica = QLabel("Acesso restrito a usuarios autorizados")
         label_dica.setObjectName("dica_acesso")
@@ -215,8 +181,7 @@ class TelaLogin(QWidget):
         layout_raiz.addWidget(painel_dir, stretch=45)
 
     def _atualizar_relogio(self):
-        agora = QTime.currentTime().toString("hh:mm:ss")
-        self.label_relogio.setText(agora)
+        self.label_relogio.setText(QTime.currentTime().toString("hh:mm:ss"))
 
     def _tentar_login(self):
         email = self.campo_email.text().strip()
@@ -243,75 +208,44 @@ class TelaLogin(QWidget):
                 background-color: #050d1a;
                 font-family: 'Segoe UI', sans-serif;
             }
-            QWidget#painel_esq {
-                background-color: #040c18;
-            }
-            QWidget#painel_dir {
-                background-color: #06101e;
-            }
-            QLabel {
-                background-color: transparent;
-                color: #c8dff5;
-            }
+            QWidget#painel_esq { background-color: #040c18; }
+            QWidget#painel_dir { background-color: #06101e; }
+            QLabel { background-color: transparent; color: #c8dff5; }
             QLabel#marca {
-                font-size: 42px;
-                font-weight: 800;
-                color: #ffffff;
-                letter-spacing: 2px;
-                background: transparent;
+                font-size: 42px; font-weight: 800;
+                color: #ffffff; letter-spacing: 2px; background: transparent;
             }
             QLabel#slogan {
-                font-size: 16px;
-                color: #2a6aaa;
-                font-weight: 300;
-                line-height: 1.6;
-                background: transparent;
+                font-size: 16px; color: #2a6aaa;
+                font-weight: 300; background: transparent;
             }
             QLabel#bullet_titulo {
-                font-size: 13px;
-                font-weight: 600;
-                color: #c8dff5;
-                background: transparent;
+                font-size: 13px; font-weight: 600;
+                color: #c8dff5; background: transparent;
             }
             QLabel#bullet_desc {
-                font-size: 12px;
-                color: #2a5a8a;
-                background: transparent;
+                font-size: 12px; color: #2a5a8a; background: transparent;
             }
             QLabel#relogio {
-                font-size: 28px;
-                font-weight: 700;
-                color: #1a6fd4;
-                letter-spacing: 3px;
-                background: transparent;
+                font-size: 30px; font-weight: 700;
+                color: #1a6fd4; letter-spacing: 3px; background: transparent;
             }
             QLabel#versao {
-                font-size: 11px;
-                color: #0d2440;
-                background: transparent;
+                font-size: 11px; color: #0d2440; background: transparent;
             }
             QLabel#bem_vindo {
-                font-size: 28px;
-                font-weight: 700;
-                color: #ffffff;
-                background: transparent;
+                font-size: 28px; font-weight: 700;
+                color: #ffffff; background: transparent;
             }
             QLabel#login_sub {
-                font-size: 13px;
-                color: #1a4a7a;
-                background: transparent;
+                font-size: 13px; color: #1a4a7a; background: transparent;
             }
             QLabel#campo_label {
-                font-size: 11px;
-                font-weight: 700;
-                color: #1a4a7a;
-                letter-spacing: 1.5px;
-                background: transparent;
+                font-size: 11px; font-weight: 700;
+                color: #1a4a7a; letter-spacing: 1.5px; background: transparent;
             }
             QLabel#dica_acesso {
-                font-size: 11px;
-                color: #0d2440;
-                background: transparent;
+                font-size: 11px; color: #0d2440; background: transparent;
             }
             QLineEdit#campo_input {
                 background-color: #0a1828;
@@ -320,7 +254,6 @@ class TelaLogin(QWidget):
                 padding: 0 16px;
                 font-size: 14px;
                 color: #c8dff5;
-                selection-background-color: #1a6fd4;
             }
             QLineEdit#campo_input:focus {
                 border: 1px solid #1a6fd4;
@@ -328,18 +261,13 @@ class TelaLogin(QWidget):
             }
             QPushButton#btn_entrar {
                 background-color: #1a6fd4;
-                color: white;
-                border: none;
+                color: white; border: none;
                 border-radius: 8px;
-                font-size: 13px;
-                font-weight: 700;
+                font-size: 13px; font-weight: 700;
                 letter-spacing: 2px;
             }
-            QPushButton#btn_entrar:hover {
-                background-color: #2a7fe4;
-            }
+            QPushButton#btn_entrar:hover { background-color: #2a7fe4; }
             QPushButton#btn_entrar:disabled {
-                background-color: #0d2040;
-                color: #2a4a6a;
+                background-color: #0d2040; color: #2a4a6a;
             }
         """

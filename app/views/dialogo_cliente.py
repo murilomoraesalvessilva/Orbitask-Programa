@@ -7,12 +7,7 @@ from PyQt6.QtCore import Qt
 from app.models.cliente import criar_cliente, atualizar_cliente
 
 ESTILO = """
-    QDialog {
-        background-color: #08121e;
-        color: #c8dff5;
-        font-family: 'Segoe UI', sans-serif;
-    }
-    QWidget {
+    QDialog, QWidget {
         background-color: #08121e;
         color: #c8dff5;
         font-family: 'Segoe UI', sans-serif;
@@ -39,9 +34,10 @@ ESTILO = """
         background-color: #0d1e30;
         border: 1px solid #0d2e4e;
         border-radius: 6px;
-        padding: 9px 12px;
+        padding: 10px 14px;
         font-size: 13px;
         color: #c8dff5;
+        min-height: 20px;
         selection-background-color: #1a6fd4;
     }
     QLineEdit:focus {
@@ -50,27 +46,19 @@ ESTILO = """
     }
     QPushButton#btn_primario {
         background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #1a6fd4,stop:1 #0d4fa0);
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 20px;
-        font-size: 13px;
-        font-weight: 600;
+        color: white; border: none; border-radius: 6px;
+        padding: 11px 20px; font-size: 13px; font-weight: 600;
     }
     QPushButton#btn_primario:hover {
         background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #2a7fe4,stop:1 #1a5fc0);
     }
     QPushButton#btn_secundario {
-        background-color: #0a1828;
-        color: #3a6a9a;
-        border: 1px solid #0d2440;
-        border-radius: 6px;
-        padding: 10px 20px;
-        font-size: 13px;
+        background-color: #0a1828; color: #3a6a9a;
+        border: 1px solid #0d2440; border-radius: 6px;
+        padding: 11px 20px; font-size: 13px;
     }
     QPushButton#btn_secundario:hover {
-        background-color: #0d2040;
-        color: #c8dff5;
+        background-color: #0d2040; color: #c8dff5;
     }
 """
 
@@ -81,9 +69,10 @@ class DialogoCliente(QDialog):
         self.cliente = cliente
         self.editando = cliente is not None
         self.setWindowTitle("Editar Cliente" if self.editando else "Novo Cliente")
-        self.setFixedSize(460, 420)
+        self.setFixedWidth(480)
         self.setStyleSheet(ESTILO)
         self._construir()
+        self.adjustSize()
         if self.editando:
             self._preencher()
 
@@ -95,18 +84,15 @@ class DialogoCliente(QDialog):
         titulo = QLabel("Editar Cliente" if self.editando else "Novo Cliente")
         titulo.setObjectName("titulo")
         layout.addWidget(titulo)
-        layout.addSpacing(20)
+        layout.addSpacing(24)
 
         self.campo_nome      = self._campo(layout, "NOME *",      "Nome completo")
-        layout.addSpacing(12)
         self.campo_telefone  = self._campo(layout, "TELEFONE",    "(00) 00000-0000")
-        layout.addSpacing(12)
         self.campo_email     = self._campo(layout, "E-MAIL",      "cliente@email.com")
-        layout.addSpacing(12)
         self.campo_documento = self._campo(layout, "CPF / CNPJ",  "000.000.000-00")
-        layout.addSpacing(12)
         self.campo_endereco  = self._campo(layout, "ENDERECO",    "Rua, numero, bairro, cidade")
-        layout.addSpacing(24)
+
+        layout.addSpacing(8)
 
         bts = QHBoxLayout()
         bts.setSpacing(12)
@@ -127,10 +113,12 @@ class DialogoCliente(QDialog):
         lbl = QLabel(label_txt)
         lbl.setObjectName("campo_label")
         layout.addWidget(lbl)
-        layout.addSpacing(4)
+        layout.addSpacing(5)
         campo = QLineEdit()
         campo.setPlaceholderText(placeholder)
+        campo.setFixedHeight(42)
         layout.addWidget(campo)
+        layout.addSpacing(14)
         return campo
 
     def _preencher(self):

@@ -35,16 +35,17 @@ ESTILO = """
         background-color: #0d1e30;
         border: 1px solid #0d2e4e;
         border-radius: 6px;
-        padding: 9px 12px;
+        padding: 10px 14px;
         font-size: 13px;
         color: #c8dff5;
+        min-height: 20px;
     }
-    QLineEdit:focus { border: 1px solid #1a6fd4; }
+    QLineEdit:focus { border: 1px solid #1a6fd4; background-color: #0d2030; }
     QTextEdit {
         background-color: #0d1e30;
         border: 1px solid #0d2e4e;
         border-radius: 6px;
-        padding: 8px 12px;
+        padding: 10px 14px;
         font-size: 13px;
         color: #c8dff5;
     }
@@ -53,36 +54,31 @@ ESTILO = """
         background-color: #0d1e30;
         border: 1px solid #0d2e4e;
         border-radius: 6px;
-        padding: 9px 12px;
+        padding: 10px 14px;
         font-size: 13px;
         color: #c8dff5;
+        min-height: 20px;
     }
-    QComboBox::drop-down { border: none; }
+    QComboBox:focus { border: 1px solid #1a6fd4; }
+    QComboBox::drop-down { border: none; width: 20px; }
     QComboBox QAbstractItemView {
-        background-color: #0a1828;
-        color: #c8dff5;
-        selection-background-color: #1a6fd4;
-        outline: none;
+        background-color: #0a1828; color: #c8dff5;
+        selection-background-color: #1a6fd4; outline: none;
     }
     QPushButton#btn_primario {
         background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #1a6fd4,stop:1 #0d4fa0);
         color: white; border: none; border-radius: 6px;
-        padding: 10px 20px; font-size: 13px; font-weight: 600;
+        padding: 11px 20px; font-size: 13px; font-weight: 600;
     }
     QPushButton#btn_primario:hover {
         background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #2a7fe4,stop:1 #1a5fc0);
     }
     QPushButton#btn_secundario {
         background-color: #0a1828; color: #3a6a9a;
-        border: 1px solid #0d2440; border-radius: 6px; padding: 10px 20px; font-size: 13px;
+        border: 1px solid #0d2440; border-radius: 6px;
+        padding: 11px 20px; font-size: 13px;
     }
     QPushButton#btn_secundario:hover { background-color: #0d2040; color: #c8dff5; }
-    QPushButton#btn_toggle {
-        background-color: #0a1828; color: #2a5a8a;
-        border: 1px solid #0d2440; border-radius: 5px;
-        padding: 5px 10px; font-size: 11px;
-    }
-    QPushButton#btn_toggle:checked { color: #1a6fd4; border-color: #1a6fd4; }
 """
 
 TIPOS = ["Computador","Notebook","Impressora","Monitor","Celular",
@@ -92,13 +88,14 @@ TIPOS = ["Computador","Notebook","Impressora","Monitor","Celular",
 class DialogoEquipamento(QDialog):
     def __init__(self, parent=None, equipamento: dict = None, ordem_id: int = None):
         super().__init__(parent)
-        self.equipamento  = equipamento
+        self.equipamento   = equipamento
         self.ordem_id_fixo = ordem_id
         self.editando = equipamento is not None
         self.setWindowTitle("Editar Equipamento" if self.editando else "Novo Equipamento")
-        self.setFixedSize(480, 520)
+        self.setFixedWidth(500)
         self.setStyleSheet(ESTILO)
         self._construir()
+        self.adjustSize()
         if self.editando:
             self._preencher()
 
@@ -110,31 +107,36 @@ class DialogoEquipamento(QDialog):
         titulo = QLabel("Editar Equipamento" if self.editando else "Novo Equipamento")
         titulo.setObjectName("titulo")
         layout.addWidget(titulo)
-        layout.addSpacing(20)
+        layout.addSpacing(24)
 
+        # Nome
         self.campo_nome = self._campo(layout, "NOME *", "Ex: Notebook Dell Inspiron")
 
+        # Tipo
         lbl_tipo = QLabel("TIPO")
         lbl_tipo.setObjectName("campo_label")
         layout.addWidget(lbl_tipo)
-        layout.addSpacing(4)
+        layout.addSpacing(5)
         self.combo_tipo = QComboBox()
+        self.combo_tipo.setFixedHeight(42)
         for t in TIPOS:
             self.combo_tipo.addItem(t)
         layout.addWidget(self.combo_tipo)
-        layout.addSpacing(12)
+        layout.addSpacing(14)
 
+        # Marca + Modelo lado a lado
         linha = QHBoxLayout()
-        linha.setSpacing(12)
+        linha.setSpacing(14)
 
         col_marca = QVBoxLayout()
         col_marca.setSpacing(0)
         lbl_m = QLabel("MARCA")
         lbl_m.setObjectName("campo_label")
         col_marca.addWidget(lbl_m)
-        col_marca.addSpacing(4)
+        col_marca.addSpacing(5)
         self.campo_marca = QLineEdit()
         self.campo_marca.setPlaceholderText("Ex: Dell")
+        self.campo_marca.setFixedHeight(42)
         col_marca.addWidget(self.campo_marca)
         linha.addLayout(col_marca)
 
@@ -143,22 +145,26 @@ class DialogoEquipamento(QDialog):
         lbl_mod = QLabel("MODELO")
         lbl_mod.setObjectName("campo_label")
         col_modelo.addWidget(lbl_mod)
-        col_modelo.addSpacing(4)
+        col_modelo.addSpacing(5)
         self.campo_modelo = QLineEdit()
         self.campo_modelo.setPlaceholderText("Ex: Inspiron 15")
+        self.campo_modelo.setFixedHeight(42)
         col_modelo.addWidget(self.campo_modelo)
         linha.addLayout(col_modelo)
 
         layout.addLayout(linha)
-        layout.addSpacing(12)
+        layout.addSpacing(14)
 
+        # Numero de serie
         self.campo_serie = self._campo(layout, "NUMERO DE SERIE", "Ex: SN123456")
 
+        # OS vinculada
         lbl_os = QLabel("ORDEM DE SERVICO VINCULADA")
         lbl_os.setObjectName("campo_label")
         layout.addWidget(lbl_os)
-        layout.addSpacing(4)
+        layout.addSpacing(5)
         self.combo_ordem = QComboBox()
+        self.combo_ordem.setFixedHeight(42)
         self.combo_ordem.addItem("-- Nenhuma --", userData=None)
         for o in listar_ordens():
             self.combo_ordem.addItem(f"#{o['id']} — {o['titulo'][:40]}", userData=o["id"])
@@ -169,18 +175,20 @@ class DialogoEquipamento(QDialog):
                     self.combo_ordem.setEnabled(False)
                     break
         layout.addWidget(self.combo_ordem)
-        layout.addSpacing(12)
+        layout.addSpacing(14)
 
+        # Observacoes
         lbl_desc = QLabel("OBSERVACOES")
         lbl_desc.setObjectName("campo_label")
         layout.addWidget(lbl_desc)
-        layout.addSpacing(4)
+        layout.addSpacing(5)
         self.campo_descricao = QTextEdit()
-        self.campo_descricao.setFixedHeight(70)
+        self.campo_descricao.setFixedHeight(80)
         self.campo_descricao.setPlaceholderText("Condicoes, defeitos, observacoes...")
         layout.addWidget(self.campo_descricao)
         layout.addSpacing(20)
 
+        # Botoes
         bts = QHBoxLayout()
         bts.setSpacing(12)
         btn_c = QPushButton("Cancelar")
@@ -199,11 +207,12 @@ class DialogoEquipamento(QDialog):
         lbl = QLabel(label_txt)
         lbl.setObjectName("campo_label")
         layout.addWidget(lbl)
-        layout.addSpacing(4)
+        layout.addSpacing(5)
         campo = QLineEdit()
         campo.setPlaceholderText(placeholder)
+        campo.setFixedHeight(42)
         layout.addWidget(campo)
-        layout.addSpacing(12)
+        layout.addSpacing(14)
         return campo
 
     def _preencher(self):
@@ -227,15 +236,10 @@ class DialogoEquipamento(QDialog):
         if not nome:
             QMessageBox.warning(self, "Campo obrigatorio", "O nome do equipamento e obrigatorio.")
             return
-        args = (
-            nome,
-            self.combo_tipo.currentText(),
-            self.campo_marca.text().strip(),
-            self.campo_modelo.text().strip(),
-            self.campo_serie.text().strip(),
-            self.campo_descricao.toPlainText().strip(),
-            self.combo_ordem.currentData(),
-        )
+        args = (nome, self.combo_tipo.currentText(),
+                self.campo_marca.text().strip(), self.campo_modelo.text().strip(),
+                self.campo_serie.text().strip(), self.campo_descricao.toPlainText().strip(),
+                self.combo_ordem.currentData())
         if self.editando:
             atualizar_equipamento(self.equipamento["id"], *args)
         else:

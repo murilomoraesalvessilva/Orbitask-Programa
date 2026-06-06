@@ -93,7 +93,7 @@ class TelaOrdens(QWidget):
         self.tabela.setColumnWidth(3, 130)
         self.tabela.setColumnWidth(4, 100)
         self.tabela.setColumnWidth(5, 90)
-        self.tabela.setColumnWidth(6, 120)
+        self.tabela.setColumnWidth(6, 130)
         self.tabela.setColumnWidth(7, 160)
         layout.addWidget(self.tabela)
 
@@ -154,14 +154,12 @@ class TelaOrdens(QWidget):
 
     def _badge_status(self, status):
         texto, cor, fundo = STATUS_CONFIG.get(status, ("?", "#fff", "#111"))
-        w = QWidget()
-        l = QHBoxLayout(w)
-        l.setContentsMargins(6, 4, 6, 4)
         lbl = QLabel(texto)
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet(f"background-color:{fundo}; color:{cor}; border:1px solid {cor}; border-radius:10px; padding:2px 10px; font-size:11px; font-weight:700;")
-        l.addWidget(lbl)
-        return w
+        lbl.setFixedWidth(108)
+        lbl.setFixedHeight(24)
+        lbl.setStyleSheet(f"background-color:{fundo}; color:{cor}; border:1px solid {cor}; border-radius:12px; font-size:11px; font-weight:700;")
+        return lbl
 
     def _badge_prioridade(self, prioridade):
         texto, cor = PRIORIDADE_CONFIG.get(prioridade, ("Normal", "#4a9eff"))
