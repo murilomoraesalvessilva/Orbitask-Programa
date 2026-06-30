@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QMessageBox, QSizePolicy
@@ -119,6 +120,19 @@ class TelaLogin(QWidget):
         ld = QVBoxLayout(painel_dir)
         ld.setContentsMargins(80, 0, 80, 0)
 
+        # Botao fechar no canto superior direito do painel
+        topo_botoes = QHBoxLayout()
+        topo_botoes.setContentsMargins(0, 24, 0, 0)
+        topo_botoes.addStretch()
+
+        self.btn_fechar = QPushButton("Sair do Programa  ✕")
+        self.btn_fechar.setObjectName("btn_fechar")
+        self.btn_fechar.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_fechar.setFixedHeight(36)
+        self.btn_fechar.clicked.connect(self._confirmar_saida)
+        topo_botoes.addWidget(self.btn_fechar)
+        ld.addLayout(topo_botoes)
+
         ld.addStretch()
 
         # Logo pequena no painel do formulario
@@ -177,11 +191,24 @@ class TelaLogin(QWidget):
         ld.addWidget(label_dica)
 
         ld.addStretch()
+        ld.addStretch()
 
         layout_raiz.addWidget(painel_dir, stretch=45)
 
     def _atualizar_relogio(self):
         self.label_relogio.setText(QTime.currentTime().toString("hh:mm:ss"))
+
+    def _confirmar_saida(self):
+        resposta = QMessageBox.question(
+            self,
+            "Sair do Orbitask",
+            "Tem certeza que deseja fechar o programa?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if resposta == QMessageBox.StandardButton.Yes:
+            self.timer_relogio.stop()
+            sys.exit(0)
 
     def _tentar_login(self):
         email = self.campo_email.text().strip()
@@ -201,6 +228,13 @@ class TelaLogin(QWidget):
             self.campo_senha.setFocus()
             self.btn_entrar.setText("ENTRAR NO SISTEMA")
             self.btn_entrar.setEnabled(True)
+
+    def keyPressEvent(self, event):
+        # Permite fechar com ESC tambem
+        if event.key() == Qt.Key.Key_Escape:
+            self._confirmar_saida()
+        else:
+            super().keyPressEvent(event)
 
     def _estilos(self):
         return """
@@ -269,5 +303,19 @@ class TelaLogin(QWidget):
             QPushButton#btn_entrar:hover { background-color: #2a7fe4; }
             QPushButton#btn_entrar:disabled {
                 background-color: #0d2040; color: #2a4a6a;
+            }
+            QPushButton#btn_fechar {
+                background-color: transparent;
+                color: #2a5a8a;
+                border: 1px solid #0d2440;
+                border-radius: 6px;
+                padding: 0 16px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton#btn_fechar:hover {
+                background-color: #1a0808;
+                color: #e05555;
+                border-color: #3a1010;
             }
         """
